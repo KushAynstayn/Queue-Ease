@@ -14,37 +14,45 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const stats = [
-  {
-    title: "Total Users",
-    value: 154,
-    icon: Users,
-    color: "text-blue-600",
-  },
-  {
-    title: "Administrators",
-    value: 3,
-    icon: ShieldCheck,
-    color: "text-red-500",
-  },
-  {
-    title: "Staff",
-    value: 18,
-    icon: UserCog,
-    color: "text-emerald-600",
-  },
-  {
-    title: "Clients",
-    value: 133,
-    icon: UserRound,
-    color: "text-violet-600",
-  },
-];
+import type { UserStats as UserStatsData } from "@/services/users/user.service";
 
-export default function UserStats() {
+interface UserStatsProps {
+  stats: UserStatsData;
+}
+
+export default function UserStats({
+  stats,
+}: UserStatsProps) {
+  const items = [
+    {
+      title: "Total Users",
+      value: stats.total,
+      icon: Users,
+      color: "text-blue-600",
+    },
+    {
+      title: "Administrators",
+      value: stats.administrators,
+      icon: ShieldCheck,
+      color: "text-red-500",
+    },
+    {
+      title: "Staff",
+      value: stats.staff,
+      icon: UserCog,
+      color: "text-emerald-600",
+    },
+    {
+      title: "Clients",
+      value: stats.clients,
+      icon: UserRound,
+      color: "text-violet-600",
+    },
+  ];
+
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {stats.map((stat) => {
+      {items.map((stat) => {
         const Icon = stat.icon;
 
         return (

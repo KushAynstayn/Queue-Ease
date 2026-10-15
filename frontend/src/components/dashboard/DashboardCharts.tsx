@@ -2,50 +2,46 @@
 
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
   PieChart,
   Pie,
   Cell,
+  Tooltip,
 } from "recharts";
 
-const queueTrend = [
-  { day: "Mon", queues: 95 },
-  { day: "Tue", queues: 120 },
-  { day: "Wed", queues: 165 },
-  { day: "Thu", queues: 145 },
-  { day: "Fri", queues: 210 },
-  { day: "Sat", queues: 130 },
-  { day: "Sun", queues: 90 },
-];
+import type { AdminDashboardData } from "@/services/admin/dashboard.service";
 
-const queueStatus = [
-  {
-    name: "Waiting",
-    value: 37,
-    color: "#F59E0B",
-  },
-  {
-    name: "Serving",
-    value: 18,
-    color: "#3B82F6",
-  },
-  {
-    name: "Completed",
-    value: 211,
-    color: "#10B981",
-  },
-];
+interface DashboardChartsProps {
+  queue: AdminDashboardData["queue"];
+}
 
-export default function DashboardCharts() {
+export default function DashboardCharts({
+  queue,
+}: DashboardChartsProps) {
+  const queueStatus = [
+    {
+      name: "Waiting",
+      value: queue.waiting,
+      color: "#F59E0B",
+    },
+    {
+      name: "Serving",
+      value: queue.serving,
+      color: "#3B82F6",
+    },
+    {
+      name: "Completed",
+      value: queue.completed,
+      color: "#10B981",
+    },
+  ];
+
+  const hasQueueData = queueStatus.some(
+    (item) => item.value > 0
+  );
+
   return (
     <section className="grid gap-6 lg:grid-cols-3">
       {/* Queue Trend */}
-
       <div
         className="
           lg:col-span-2
@@ -63,63 +59,25 @@ export default function DashboardCharts() {
           </h2>
 
           <p className="text-sm text-slate-500">
-            Number of queue requests received this week.
+            Historical queue trends will be connected through
+            the Analytics module.
           </p>
         </div>
 
-        <div className="h-[320px]">
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-          >
-            <AreaChart data={queueTrend}>
-              <defs>
-                <linearGradient
-                  id="queueGradient"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
-                  <stop
-                    offset="0%"
-                    stopColor="#2845D6"
-                    stopOpacity={0.35}
-                  />
+        <div className="flex h-[320px] items-center justify-center rounded-xl bg-slate-50">
+          <div className="text-center">
+            <p className="text-sm font-medium text-slate-600">
+              Historical trend data is not available yet.
+            </p>
 
-                  <stop
-                    offset="100%"
-                    stopColor="#2845D6"
-                    stopOpacity={0.02}
-                  />
-                </linearGradient>
-              </defs>
-
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-              />
-
-              <XAxis dataKey="day" />
-
-              <YAxis />
-
-              <Tooltip />
-
-              <Area
-                type="monotone"
-                dataKey="queues"
-                stroke="#2845D6"
-                strokeWidth={3}
-                fill="url(#queueGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+            <p className="mt-1 text-xs text-slate-400">
+              This will be connected in the Analytics phase.
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Queue Status */}
-
       <div
         className="
           rounded-2xl
@@ -136,28 +94,38 @@ export default function DashboardCharts() {
           </h2>
 
           <p className="text-sm text-slate-500">
-            Current queue distribution.
+            Current queue distribution today.
           </p>
         </div>
 
         <div className="mx-auto h-[260px] w-full">
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie
-                data={queueStatus}
-                innerRadius={65}
-                outerRadius={90}
-                dataKey="value"
-              >
-                {queueStatus.map((item) => (
-                  <Cell
-                    key={item.name}
-                    fill={item.color}
-                  />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
+          {hasQueueData ? (
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={queueStatus}
+                  innerRadius={65}
+                  outerRadius={90}
+                  dataKey="value"
+                >
+                  {queueStatus.map((item) => (
+                    <Cell
+                      key={item.name}
+                      fill={item.color}
+                    />
+                  ))}
+                </Pie>
+
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-slate-400">
+                No queue activity yet.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 space-y-3">

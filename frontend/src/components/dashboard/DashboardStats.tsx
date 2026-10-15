@@ -5,49 +5,72 @@ import {
   Users,
   CheckCircle2,
   BrainCircuit,
-  ArrowUpRight,
 } from "lucide-react";
 
-const stats = [
-  {
-    title: "Queue Today",
-    value: "248",
-    description: "Total queue requests today",
-    change: "+12%",
-    icon: ClipboardList,
-    iconBg: "bg-blue-100",
-    iconColor: "text-blue-600",
-  },
-  {
-    title: "Waiting Clients",
-    value: "37",
-    description: "Currently waiting",
-    change: "+5%",
-    icon: Users,
-    iconBg: "bg-amber-100",
-    iconColor: "text-amber-600",
-  },
-  {
-    title: "Completed Services",
-    value: "211",
-    description: "Successfully served",
-    change: "+18%",
-    icon: CheckCircle2,
-    iconBg: "bg-emerald-100",
-    iconColor: "text-emerald-600",
-  },
-  {
-    title: "Forecast Accuracy",
-    value: "96.4%",
-    description: "AI prediction performance",
-    change: "+1.2%",
-    icon: BrainCircuit,
-    iconBg: "bg-violet-100",
-    iconColor: "text-violet-600",
-  },
-];
+import type { AdminDashboardData } from "@/services/admin/dashboard.service";
 
-export default function DashboardStats() {
+interface DashboardStatsProps {
+  users: AdminDashboardData["users"];
+  queue: AdminDashboardData["queue"];
+  latestForecast: AdminDashboardData["latest_forecast"];
+}
+
+export default function DashboardStats({
+  queue,
+  latestForecast,
+}: DashboardStatsProps) {
+  const totalQueue =
+    queue.waiting +
+    queue.called +
+    queue.serving +
+    queue.completed +
+    queue.cancelled;
+
+  const forecastConfidence =
+    latestForecast &&
+    typeof latestForecast === "object" &&
+    "confidence_score" in latestForecast
+      ? Number(latestForecast.confidence_score)
+      : null;
+
+  const stats = [
+    {
+      title: "Queue Today",
+      value: totalQueue.toString(),
+      description: "Total queue requests today",
+      icon: ClipboardList,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+    },
+    {
+      title: "Waiting Clients",
+      value: queue.waiting.toString(),
+      description: "Currently waiting",
+      icon: Users,
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-600",
+    },
+    {
+      title: "Completed Services",
+      value: queue.completed.toString(),
+      description: "Successfully served",
+      icon: CheckCircle2,
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-600",
+    },
+    {
+      title: "Forecast Confidence",
+      value:
+        forecastConfidence !== null
+          ? `${forecastConfidence.toFixed(1)}%`
+          : "N/A",
+      description: "Latest AI forecast confidence",
+      icon: BrainCircuit,
+      iconBg: "bg-violet-100",
+      iconColor: "text-violet-600",
+    },
+  ];
+
   return (
     <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => {
@@ -102,21 +125,6 @@ export default function DashboardStats() {
             <p className="mt-5 text-sm text-slate-500">
               {stat.description}
             </p>
-
-            <div className="mt-4 flex items-center gap-2">
-              <ArrowUpRight
-                size={16}
-                className="text-emerald-500"
-              />
-
-              <span className="text-sm font-semibold text-emerald-600">
-                {stat.change}
-              </span>
-
-              <span className="text-sm text-slate-400">
-                vs yesterday
-              </span>
-            </div>
           </div>
         );
       })}

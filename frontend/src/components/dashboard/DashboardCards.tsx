@@ -2,20 +2,60 @@
 
 import {
   BrainCircuit,
-  Clock3,
-  TrendingUp,
   Users,
   BellRing,
   CheckCircle2,
   AlertCircle,
+  Clock3,
   ArrowRight,
 } from "lucide-react";
 
-export default function DashboardCards() {
+import type { AdminDashboardData } from "@/services/admin/dashboard.service";
+
+interface DashboardCardsProps {
+  queue: AdminDashboardData["queue"];
+  sms: AdminDashboardData["sms"];
+  latestForecast: AdminDashboardData["latest_forecast"];
+}
+
+interface ForecastData {
+  predicted_transactions?: number;
+  predicted_wait_minutes?: number;
+  predicted_peak_hour?: number;
+  model_name?: string;
+  confidence_score?: number;
+  forecast_date?: string;
+}
+
+export default function DashboardCards({
+  queue,
+  sms,
+  latestForecast,
+}: DashboardCardsProps) {
+  const forecast = latestForecast as ForecastData | null;
+
+  const peakHour =
+    typeof forecast?.predicted_peak_hour === "number"
+      ? `${forecast.predicted_peak_hour
+          .toString()
+          .padStart(2, "0")}:00`
+      : "N/A";
+
+  const confidence =
+    typeof forecast?.confidence_score === "number"
+      ? `${forecast.confidence_score.toFixed(1)}%`
+      : "N/A";
+
+  const deliveryTotal = sms.delivered + sms.failed;
+
+  const deliverySuccess =
+    deliveryTotal > 0
+      ? `${((sms.delivered / deliveryTotal) * 100).toFixed(1)}%`
+      : "N/A";
+
   return (
     <section className="grid gap-6 xl:grid-cols-3">
       {/* AI Forecast */}
-
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-[#2845D6]/10 p-3">
@@ -31,7 +71,7 @@ export default function DashboardCards() {
             </h2>
 
             <p className="text-sm text-slate-500">
-              Tomorrow's prediction
+              Latest prediction
             </p>
           </div>
         </div>
@@ -43,7 +83,7 @@ export default function DashboardCards() {
             </span>
 
             <span className="font-bold text-slate-800">
-              286
+              {forecast?.predicted_transactions ?? "N/A"}
             </span>
           </div>
 
@@ -53,7 +93,7 @@ export default function DashboardCards() {
             </span>
 
             <span className="font-bold text-slate-800">
-              10:00 AM
+              {peakHour}
             </span>
           </div>
 
@@ -63,31 +103,20 @@ export default function DashboardCards() {
             </span>
 
             <span className="font-bold text-emerald-600">
-              96.4%
+              {confidence}
             </span>
           </div>
         </div>
 
         <div className="mt-8 rounded-xl bg-blue-50 p-4">
-          <div className="flex items-start gap-3">
-            <TrendingUp
-              className="mt-1 text-[#2845D6]"
-              size={20}
-            />
-
-            <p className="text-sm leading-6 text-slate-600">
-              AI recommends assigning an additional
-              staff member between{" "}
-              <strong>9:30 AM</strong> and{" "}
-              <strong>11:30 AM</strong> due to
-              predicted high queue demand.
-            </p>
-          </div>
+          <p className="text-sm leading-6 text-slate-600">
+            Forecast details will be expanded in the Admin
+            Forecasting module.
+          </p>
         </div>
       </div>
 
       {/* Queue Summary */}
-
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-amber-100 p-3">
@@ -117,47 +146,47 @@ export default function DashboardCards() {
               />
 
               <span className="text-slate-500">
-                Average Waiting Time
+                Waiting Clients
               </span>
             </div>
 
             <span className="font-semibold">
-              14 mins
+              {queue.waiting}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-slate-500">
-              Active Counters
+              Currently Serving
             </span>
 
             <span className="font-semibold">
-              5 / 6
+              {queue.serving}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-slate-500">
-              Longest Queue
+              Called
             </span>
 
             <span className="font-semibold">
-              Registrar
+              {queue.called}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
             <span className="text-slate-500">
-              Waiting Clients
+              Completed Today
             </span>
 
             <span className="font-semibold">
-              37
+              {queue.completed}
             </span>
           </div>
         </div>
 
-        <button
+        <div
           className="
             mt-8
             flex
@@ -166,21 +195,19 @@ export default function DashboardCards() {
             justify-center
             gap-2
             rounded-xl
-            bg-[#2845D6]
+            bg-slate-100
             py-3
-            text-white
-            transition
-            hover:bg-[#1d35b3]
+            text-sm
+            text-slate-500
           "
         >
-          View Queue Monitoring
-
-          <ArrowRight size={18} />
-        </button>
+          Queue monitoring will be connected in the
+          Admin Queue phase.
+          <ArrowRight size={16} />
+        </div>
       </div>
 
       {/* SMS */}
-
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-emerald-100 p-3">
@@ -196,7 +223,7 @@ export default function DashboardCards() {
             </h2>
 
             <p className="text-sm text-slate-500">
-              Semaphore Gateway
+              Today's notifications
             </p>
           </div>
         </div>
@@ -215,7 +242,7 @@ export default function DashboardCards() {
             </div>
 
             <span className="font-bold">
-              189
+              {sms.sent}
             </span>
           </div>
 
@@ -232,7 +259,7 @@ export default function DashboardCards() {
             </div>
 
             <span className="font-bold">
-              6
+              {sms.pending}
             </span>
           </div>
 
@@ -242,16 +269,25 @@ export default function DashboardCards() {
             </span>
 
             <span className="font-bold text-emerald-600">
-              98.2%
+              {deliverySuccess}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">
+              Failed
+            </span>
+
+            <span className="font-bold text-red-600">
+              {sms.failed}
             </span>
           </div>
         </div>
 
         <div className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
           <p className="text-sm text-emerald-700">
-            SMS gateway is operating normally.
-            All queued notifications are expected
-            to be delivered successfully.
+            SMS statistics are based on today's notification
+            records.
           </p>
         </div>
       </div>

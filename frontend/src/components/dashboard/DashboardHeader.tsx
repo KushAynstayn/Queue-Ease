@@ -1,21 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   Search,
   Bell,
   CalendarDays,
 } from "lucide-react";
 
-export default function DashboardHeader() {
-  const today = useMemo(() => {
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }).format(new Date());
-  }, []);
+interface DashboardHeaderProps {
+  date: string;
+}
+
+export default function DashboardHeader({
+  date,
+}: DashboardHeaderProps) {
+  const formattedDate = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${date}T00:00:00`));
 
   return (
     <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -35,7 +38,7 @@ export default function DashboardHeader() {
             className="text-[#2845D6]"
           />
 
-          <span>{today}</span>
+          <span>{formattedDate}</span>
         </div>
       </div>
 
