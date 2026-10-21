@@ -137,6 +137,22 @@ class QueueController extends Controller
             }
         }
 
+
+        if ($roleName === 'client') {
+            $clientId = DB::table('clients')
+                ->where('user_id', $user->id)
+                ->value('id');
+
+            if (!$clientId) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where(
+                    'queue_transactions.client_id',
+                    $clientId
+                );
+            }
+        }
+
         if (!empty($validated['status'])) {
             $query->where(
                 'queue_transactions.status',
@@ -195,26 +211,38 @@ class QueueController extends Controller
     /**
      * Create a queue transaction.
      */
+    
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => [
-                'required',
-                'integer',
-                'exists:clients,id',
-            ],
             'service_id' => [
                 'required',
                 'integer',
                 'exists:services,id',
             ],
             'priority' => [
+                'sometimes',
                 'nullable',
                 Rule::in(['normal', 'priority']),
             ],
         ]);
 
-        $queue = DB::transaction(function () use ($validated) {
+        $user = $request->user();
+
+        $client = DB::table('clients')
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$client) {
+            return ApiResponse::notFound(
+                'Client profile not found.'
+            );
+        }
+
+        $queueId = DB::transaction(function () use (
+            $validated,
+            $client
+        ) {
             $queueDate = now()->toDateString();
 
             $service = DB::table('services')
@@ -226,12 +254,8 @@ class QueueController extends Controller
                 abort(422, 'The selected service is inactive.');
             }
 
-            /*
-             * Prevent the same client from having multiple
-             * active queue transactions for the same date.
-             */
             $existingQueue = DB::table('queue_transactions')
-                ->where('client_id', $validated['client_id'])
+                ->where('client_id', $client->id)
                 ->where('queue_date', $queueDate)
                 ->whereIn('status', [
                     'waiting',
@@ -244,29 +268,20 @@ class QueueController extends Controller
             if ($existingQueue) {
                 abort(
                     422,
-                    'The client already has an active queue transaction.'
+                    'You already have an active queue today.'
                 );
             }
 
-            /*
-             * Determine the next position for this service.
-             */
             $lastPosition = DB::table('queue_transactions')
-                ->where('service_id', $validated['service_id'])
+                ->where('service_id', $service->id)
                 ->where('queue_date', $queueDate)
-                ->lockForUpdate()
                 ->max('position_number');
 
             $positionNumber = ((int) $lastPosition) + 1;
 
-            /*
-             * Count existing transactions for this service/date.
-             * Used to generate the queue number.
-             */
             $sequence = DB::table('queue_transactions')
-                ->where('service_id', $validated['service_id'])
+                ->where('service_id', $service->id)
                 ->where('queue_date', $queueDate)
-                ->lockForUpdate()
                 ->count() + 1;
 
             $queueNumber = strtoupper($service->code)
@@ -278,49 +293,46 @@ class QueueController extends Controller
                     STR_PAD_LEFT
                 );
 
-            /*
-             * Initial wait estimate.
-             *
-             * AI forecasting will replace/enhance this later.
-             */
-            $estimatedWaitMinutes =
-                $positionNumber *
-                ((int) $service->estimated_service_minutes);
+            $estimatedWaitMinutes = $positionNumber
+                * ((int) $service->estimated_service_minutes);
 
-            $queueId = DB::table('queue_transactions')->insertGetId([
-                'client_id' => $validated['client_id'],
-                'service_id' => $validated['service_id'],
-                'counter_id' => null,
-                'queue_number' => $queueNumber,
-                'queue_date' => $queueDate,
-                'status' => 'waiting',
-                'priority' => $validated['priority'] ?? 'normal',
-                'position_number' => $positionNumber,
-                'estimated_wait_minutes' => $estimatedWaitMinutes,
-                'actual_wait_minutes' => null,
-                'service_duration_minutes' => null,
-                'requested_at' => now(),
-                'called_at' => null,
-                'serving_at' => null,
-                'completed_at' => null,
-                'served_by' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $now = now();
+
+            $queueId = DB::table('queue_transactions')
+                ->insertGetId([
+                    'client_id' => $client->id,
+                    'service_id' => $service->id,
+                    'counter_id' => null,
+                    'queue_number' => $queueNumber,
+                    'queue_date' => $queueDate,
+                    'status' => 'waiting',
+                    'priority' => $validated['priority'] ?? 'normal',
+                    'position_number' => $positionNumber,
+                    'estimated_wait_minutes' => $estimatedWaitMinutes,
+                    'actual_wait_minutes' => null,
+                    'service_duration_minutes' => null,
+                    'requested_at' => $now,
+                    'called_at' => null,
+                    'serving_at' => null,
+                    'completed_at' => null,
+                    'served_by' => null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
 
             DB::table('queue_status_history')->insert([
                 'queue_transaction_id' => $queueId,
                 'previous_status' => null,
                 'new_status' => 'waiting',
-                'changed_by' => Auth::id(),
+                'changed_by' => $client->user_id,
                 'notes' => 'Queue transaction created.',
-                'created_at' => now(),
+                'created_at' => $now,
             ]);
 
             return $queueId;
         });
 
-        $queue = $this->getQueue($queue);
+        $queue = $this->getQueue($queueId);
 
         return ApiResponse::success(
             'Queue transaction created successfully.',
@@ -329,14 +341,36 @@ class QueueController extends Controller
         );
     }
 
+
     /**
      * Display a specific queue transaction.
      */
-    public function show(int $id)
+    public function show(Request $request, int $id)
     {
-        $queue = $this->getQueue($id);
+        $user = $request->user();
 
-        if (!$queue) {
+        $roleName = DB::table('roles')
+            ->where('id', $user->role_id)
+            ->value('name');
+
+        $queueQuery = DB::table('queue_transactions')
+            ->where('id', $id);
+
+        if ($roleName === 'client') {
+            $clientId = DB::table('clients')
+                ->where('user_id', $user->id)
+                ->value('id');
+
+            if (!$clientId) {
+                return ApiResponse::notFound(
+                    'Queue transaction not found.'
+                );
+            }
+
+            $queueQuery->where('client_id', $clientId);
+        }
+
+        if (!$queueQuery->exists()) {
             return ApiResponse::notFound(
                 'Queue transaction not found.'
             );
@@ -344,20 +378,39 @@ class QueueController extends Controller
 
         return ApiResponse::success(
             'Queue transaction retrieved successfully.',
-            $queue
+            $this->getQueue($id)
         );
     }
 
     /**
      * Display queue status history.
      */
-    public function history(int $id)
+    public function history(Request $request, int $id)
     {
-        $queueExists = DB::table('queue_transactions')
-            ->where('id', $id)
-            ->exists();
+        $user = $request->user();
 
-        if (!$queueExists) {
+        $roleName = DB::table('roles')
+            ->where('id', $user->role_id)
+            ->value('name');
+
+        $queueQuery = DB::table('queue_transactions')
+            ->where('id', $id);
+
+        if ($roleName === 'client') {
+            $clientId = DB::table('clients')
+                ->where('user_id', $user->id)
+                ->value('id');
+
+            if (!$clientId) {
+                return ApiResponse::notFound(
+                    'Queue transaction not found.'
+                );
+            }
+
+            $queueQuery->where('client_id', $clientId);
+        }
+
+        if (!$queueQuery->exists()) {
             return ApiResponse::notFound(
                 'Queue transaction not found.'
             );

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Admin\SmsController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Staff\StaffDashboardController;
+use App\Http\Controllers\Api\Client\ClientDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -394,17 +395,37 @@ Route::prefix('admin')
         ->middleware(['auth:sanctum', 'role:client'])
         ->group(function () {
 
+
+            Route::get('/dashboard', [
+                ClientDashboardController::class,
+                'index',
+            ]);
+
+            Route::get('/active-queue', [
+                ClientDashboardController::class,
+                'activeQueue',
+            ]);
+
             Route::get('/profile', function () {
                 return response()->json([
                     'message' => 'Client profile endpoint is ready.',
                 ]);
             });
 
-            Route::get('/queue-history', function () {
-                return response()->json([
-                    'message' => 'Client queue history endpoint is ready.',
-                ]);
-            });
+            Route::get('/queue-history', [
+                ClientDashboardController::class,
+                'history',
+            ]);
+
+            Route::get('/notifications', [
+                ClientDashboardController::class,
+                'notifications',
+            ]);
+
+            Route::put('/notification-preference', [
+                ClientDashboardController::class,
+                'updateNotificationPreference',
+            ]);
         });
 
 
