@@ -290,7 +290,7 @@ Route::prefix('admin')
     |--------------------------------------------------------------------------
     */
 
-    Route::get('/forecasting-data', [ForecastController::class, 'forecastingData'])
+    Route::get('/forecasting-data', [ForecastController::class, 'data'])
         ->middleware([
             'auth:sanctum',
             'role:admin,staff',

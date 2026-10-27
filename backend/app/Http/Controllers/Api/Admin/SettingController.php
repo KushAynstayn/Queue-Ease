@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\ActivityLogService;
 
 class SettingController extends Controller
 {
@@ -38,7 +39,10 @@ class SettingController extends Controller
         );
     }
 
-    public function update(Request $request)
+    public function update(
+        Request $request,
+        ActivityLogService $activityLogService
+    )
     {
         $validator = Validator::make(
             $request->all(),
@@ -100,15 +104,23 @@ class SettingController extends Controller
             ),
             'academic_year' => $request->academic_year,
             'estimated_service_minutes' =>
-                $request->estimated_service_minutes,
+            $request->estimated_service_minutes,
             'daily_queue_reset' =>
-                $request->boolean('daily_queue_reset'),
+            $request->boolean('daily_queue_reset'),
             'maximum_queue_capacity' =>
-                $request->maximum_queue_capacity,
+            $request->maximum_queue_capacity,
             'updated_by' => $request->user()->id,
         ]);
 
         $settings->save();
+
+        $activityLogService->record(
+            $request,
+            'settings.updated',
+            'Settings',
+            'Updated system settings.',
+            $settings
+        );
 
         $settings->load([
             'updatedBy:id,first_name,middle_name,last_name,username',

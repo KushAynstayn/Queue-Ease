@@ -14,6 +14,21 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request)
     {
+
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'module' => ['nullable', 'string', 'max:100'],
+            'action' => ['nullable', 'string', 'max:100'],
+            'user_id' => ['nullable', 'integer', 'min:1'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => [
+                'nullable',
+                'date_format:Y-m-d',
+                'after_or_equal:from',
+            ],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $query = ActivityLog::query()
             ->with([
                 'user:id,first_name,middle_name,last_name,username',
@@ -68,6 +83,15 @@ class ActivityLogController extends Controller
             max((int) $request->input('per_page', 15), 1),
             100
         );
+
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->input('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->input('to'));
+        }
 
         $logs = $query->paginate($perPage);
 

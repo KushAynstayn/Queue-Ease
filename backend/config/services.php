@@ -35,4 +35,22 @@ return [
         ],
     ],
 
+    'ai_service' => [
+        'url' => env(
+            'AI_SERVICE_URL',
+            'http://127.0.0.1:5001'
+        ),
+    ],
+
+
+    'semaphore' => [
+        'api_key' => env('SEMAPHORE_API_KEY'),
+        'sender_name' => env('SEMAPHORE_SENDER_NAME'),
+        'base_url' => env(
+            'SEMAPHORE_BASE_URL',
+            'https://api.semaphore.co/api/v4'
+        ),
+        'timeout' => (int) env('SEMAPHORE_TIMEOUT', 10),
+    ],
+
 ];

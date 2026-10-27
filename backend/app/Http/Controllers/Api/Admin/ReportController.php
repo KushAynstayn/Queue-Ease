@@ -8,19 +8,58 @@ use App\Models\QueueTransaction;
 use App\Models\ForecastResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ReportController extends Controller
 {
+    /**
+     * Validate shared report date filters.
+     */
+    private function validateDateFilters(Request $request): array
+    {
+        return $request->validate([
+            'date' => ['nullable', 'date_format:Y-m-d'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => [
+                'nullable',
+                'date_format:Y-m-d',
+                'after_or_equal:from',
+            ],
+        ]);
+    }
+
+    /**
+     * Apply date filters to a query.
+     */
+    private function applyDateFilters($query, array $filters, string $column)
+    {
+        if (!empty($filters['date'])) {
+            $query->whereDate($column, $filters['date']);
+        } else {
+            if (!empty($filters['from'])) {
+                $query->whereDate($column, '>=', $filters['from']);
+            }
+
+            if (!empty($filters['to'])) {
+                $query->whereDate($column, '<=', $filters['to']);
+            }
+        }
+
+        return $query;
+    }
+
     /**
      * Queue performance report.
      */
     public function queue(Request $request)
     {
-        $query = QueueTransaction::query();
+        $filters = $this->validateDateFilters($request);
 
-        if ($request->filled('date')) {
-            $query->whereDate('queue_date', $request->date);
-        }
+        $query = $this->applyDateFilters(
+            QueueTransaction::query(),
+            $filters,
+            'queue_date'
+        );
 
         $total = (clone $query)->count();
 
@@ -44,6 +83,10 @@ class ReportController extends Controller
             ->whereNotNull('actual_wait_minutes')
             ->avg('actual_wait_minutes');
 
+        $averageServiceDuration = (clone $query)
+            ->whereNotNull('service_duration_minutes')
+            ->avg('service_duration_minutes');
+
         return ApiResponse::success(
             'Queue report generated successfully.',
             [
@@ -52,7 +95,14 @@ class ReportController extends Controller
                 'waiting' => $waiting,
                 'serving' => $serving,
                 'skipped' => $skipped,
-                'average_wait_minutes' => round($averageWaitTime ?? 0, 2),
+                'average_wait_minutes' => round(
+                    (float) $averageWaitTime,
+                    2
+                ),
+                'average_service_duration_minutes' => round(
+                    (float) $averageServiceDuration,
+                    2
+                ),
             ]
         );
     }
@@ -62,11 +112,13 @@ class ReportController extends Controller
      */
     public function sms(Request $request)
     {
-        $query = DB::table('sms_notifications');
+        $filters = $this->validateDateFilters($request);
 
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
-        }
+        $query = $this->applyDateFilters(
+            DB::table('sms_notifications'),
+            $filters,
+            'created_at'
+        );
 
         $total = (clone $query)->count();
 
@@ -98,15 +150,17 @@ class ReportController extends Controller
      */
     public function forecast(Request $request)
     {
-        $query = ForecastResult::query();
+        $filters = $this->validateDateFilters($request);
 
-        if ($request->filled('date')) {
-            $query->whereDate('forecast_date', $request->date);
-        }
+        $query = $this->applyDateFilters(
+            ForecastResult::query(),
+            $filters,
+            'forecast_date'
+        );
 
         $forecasts = $query
             ->orderByDesc('forecast_date')
-            ->get();
+            ->paginate(20);
 
         return ApiResponse::success(
             'Forecast report generated successfully.',

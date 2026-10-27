@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use App\Services\ActivityLogService;
 
 class QueueController extends Controller
 {
@@ -212,7 +213,10 @@ class QueueController extends Controller
      * Create a queue transaction.
      */
     
-    public function store(Request $request)
+    public function store(
+        Request $request,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'service_id' => [
@@ -334,6 +338,14 @@ class QueueController extends Controller
 
         $queue = $this->getQueue($queueId);
 
+        $activityLogService->record(
+            $request,
+            'queue.created',
+            'Queue',
+            "Client created queue {$queue->queue_number}.",
+            \App\Models\QueueTransaction::find($queueId)
+        );
+
         return ApiResponse::success(
             'Queue transaction created successfully.',
             $queue,
@@ -454,7 +466,11 @@ class QueueController extends Controller
     /**
      * Update queue status.
      */
-    public function updateStatus(Request $request, int $id)
+    public function updateStatus(
+        Request $request,
+        int $id,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'status' => [
@@ -574,6 +590,15 @@ class QueueController extends Controller
             return $this->getQueue($id);
         });
 
+
+        $activityLogService->record(
+            $request,
+            'queue.status_updated',
+            'Queue',
+            "Queue {$queue->queue_number} status changed to {$queue->status}.",
+            \App\Models\QueueTransaction::find($queue->id)
+        );
+
         return ApiResponse::success(
             'Queue status updated successfully.',
             $queue
@@ -649,7 +674,10 @@ class QueueController extends Controller
 
 
 
-    public function serveNext(Request $request)
+    public function serveNext(
+        Request $request,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'counter_id' => [
@@ -725,16 +753,30 @@ class QueueController extends Controller
             return $nextQueue->id;
         });
 
+        $servedQueue = $this->getQueue($queue);
+
+        $activityLogService->record(
+            $request,
+            'queue.served_next',
+            'Queue',
+            "Staff called queue {$servedQueue->queue_number}.",
+            \App\Models\QueueTransaction::find($servedQueue->id)
+        );
+
         return ApiResponse::success(
             'Next student called successfully.',
-            $this->getQueue($queue)
+            $servedQueue
         );
     }
 
 
 
     
-    public function recall(Request $request, int $id)
+    public function recall(
+        Request $request,
+        int $id,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -828,9 +870,19 @@ class QueueController extends Controller
             return $id;
         });
 
+        $recalledQueue = $this->getQueue($queueId);
+
+        $activityLogService->record(
+            $request,
+            'queue.recalled',
+            'Queue',
+            "Staff recalled queue {$recalledQueue->queue_number} to waiting status.",
+            \App\Models\QueueTransaction::find($queueId)
+        );
+
         return ApiResponse::success(
             'Queue recalled successfully.',
-            $this->getQueue($queueId)
+            $recalledQueue
         );
     }
 

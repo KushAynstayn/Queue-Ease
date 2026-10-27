@@ -9,6 +9,8 @@ class ActivityLog extends Model
 {
     protected $table = 'activity_logs';
 
+    public $timestamps = false;
+
     protected $fillable = [
         'user_id',
         'action',
@@ -17,12 +19,15 @@ class ActivityLog extends Model
         'target_type',
         'target_id',
         'ip_address',
+        'created_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'user_id' => 'integer',
             'target_id' => 'integer',
+            'created_at' => 'datetime',
         ];
     }
 

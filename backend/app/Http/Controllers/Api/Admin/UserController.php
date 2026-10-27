@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Services\ActivityLogService;
 
 class UserController extends Controller
 {
@@ -167,7 +168,10 @@ class UserController extends Controller
     /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    public function store(
+        Request $request,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'role_id' => [
@@ -246,6 +250,14 @@ class UserController extends Controller
 
         $user = User::create($validated);
 
+        $activityLogService->record(
+            $request,
+            'user.created',
+            'users',
+            "Created user account for {$user->username}.",
+            $user
+        );
+
         $user->load('role');
 
         return ApiResponse::success(
@@ -258,7 +270,11 @@ class UserController extends Controller
     /**
      * Update an existing user.
      */
-    public function update(Request $request, int $id)
+    public function update(
+        Request $request,
+        int $id,
+        ActivityLogService $activityLogService
+    )
     {
         $user = User::find($id);
 
@@ -343,6 +359,14 @@ class UserController extends Controller
 
         $user->update($validated);
 
+        $activityLogService->record(
+            $request,
+            'user.updated',
+            'users',
+            "Updated user account for {$user->username}.",
+            $user
+        );
+
         $user->load('role');
 
         return ApiResponse::success(
@@ -354,7 +378,11 @@ class UserController extends Controller
     /**
      * Update a user's status.
      */
-    public function updateStatus(Request $request, int $id)
+    public function updateStatus(
+        Request $request,
+        int $id,
+        ActivityLogService $activityLogService
+    )
     {
         $user = User::find($id);
 
@@ -392,6 +420,14 @@ class UserController extends Controller
             'status' => $validated['status'],
         ]);
 
+        $activityLogService->record(
+            $request,
+            'user.status_updated',
+            'users',
+            "Changed status of user {$user->username} to {$validated['status']}.",
+            $user
+        );
+
         $user->load('role');
 
         return ApiResponse::success(
@@ -403,7 +439,11 @@ class UserController extends Controller
     /**
      * Reset a user's password.
      */
-    public function resetPassword(Request $request, int $id)
+    public function resetPassword(
+        Request $request,
+        int $id,
+        ActivityLogService $activityLogService
+    )
     {
         $user = User::find($id);
 
@@ -432,6 +472,15 @@ class UserController extends Controller
             'password' => $validated['password'],
         ]);
 
+
+        $activityLogService->record(
+            $request,
+            'user.password_reset',
+            'users',
+            "Reset password for user {$user->username}.",
+            $user
+        );
+
         return ApiResponse::success(
             'User password reset successfully.'
         );
@@ -440,7 +489,10 @@ class UserController extends Controller
     /**
      * Delete a user.
      */
-    public function destroy(int $id)
+    public function destroy(
+        int $id,
+        ActivityLogService $activityLogService
+    )
     {
         $user = User::find($id);
 
@@ -461,6 +513,14 @@ class UserController extends Controller
                 'You cannot delete your own account.'
             );
         }
+
+        $activityLogService->record(
+            request(),
+            'user.deleted',
+            'users',
+            "Deleted user account for {$user->username}.",
+            $user
+        );
 
         $user->delete();
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\Role;
 use Illuminate\Http\Request;
+use App\Services\ActivityLogService;
 
 class RoleController extends Controller
 {
@@ -33,7 +34,11 @@ class RoleController extends Controller
 
 
 
-    public function assignPermissions(Request $request, Role $role)
+    public function assignPermissions(
+        Request $request,
+        Role $role,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'permission_ids' => ['required', 'array', 'min:1'],
@@ -57,6 +62,15 @@ class RoleController extends Controller
 
         $role->load('permissions');
 
+
+        $activityLogService->record(
+            $request,
+            'role.permissions_assigned',
+            'Roles',
+            "Assigned permissions to role {$role->name}.",
+            $role
+        );
+
         return ApiResponse::success(
             'Permissions assigned to role successfully.',
             $role
@@ -65,7 +79,11 @@ class RoleController extends Controller
 
 
 
-    public function updatePermissions(Request $request, Role $role)
+    public function updatePermissions(
+        Request $request,
+        Role $role,
+        ActivityLogService $activityLogService
+    )
     {
         $validated = $request->validate([
             'permission_ids' => ['required', 'array'],
@@ -73,6 +91,14 @@ class RoleController extends Controller
         ]);
 
         $role->permissions()->sync($validated['permission_ids']);
+
+        $activityLogService->record(
+            $request,
+            'role.permissions_updated',
+            'Roles',
+            "Updated permissions for role {$role->name}.",
+            $role
+        );
 
         $role->load('permissions');
 
