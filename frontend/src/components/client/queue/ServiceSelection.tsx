@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -7,67 +8,74 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-interface Service {
-  id: string;
+export interface QueueService {
+  id: number;
   name: string;
-  description: string;
-  icon: React.ElementType;
+  code: string;
+  description: string | null;
+  estimated_service_minutes: number;
 }
 
 interface ServiceSelectionProps {
-  selectedService: string | null;
-  onSelect: (serviceId: string) => void;
+  services: QueueService[];
+  selectedService: number | null;
+  onSelect: (serviceId: number) => void;
 }
 
-const services: Service[] = [
-  {
-    id: "enrollment",
-    name: "Enrollment",
-    description:
-      "Process your enrollment and submit the required enrollment documents.",
-    icon: GraduationCap,
-  },
-  {
-    id: "enrollment-records",
-    name: "Enrollment Records",
-    description:
-      "Request assistance with enrollment records and related documents.",
-    icon: FileText,
-  },
-  {
-    id: "enrollment-assistance",
-    name: "Enrollment Assistance",
-    description:
-      "Get assistance with enrollment concerns and other enrollment-related inquiries.",
-    icon: HelpCircle,
-  },
-];
+function getServiceIcon(name: string) {
+  const normalizedName = name.toLowerCase();
+
+  if (normalizedName.includes("record")) {
+    return FileText;
+  }
+
+  if (
+    normalizedName.includes("assistance") ||
+    normalizedName.includes("inquiry")
+  ) {
+    return HelpCircle;
+  }
+
+  return GraduationCap;
+}
 
 export default function ServiceSelection({
+  services,
   selectedService,
   onSelect,
 }: ServiceSelectionProps) {
+  if (services.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed p-8 text-center">
+        <p className="font-medium">No services are currently available</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Please try again later or contact the enrollment office.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-semibold">
           Select an Enrollment Service
         </h2>
-
         <p className="mt-1 text-sm text-muted-foreground">
           Choose the enrollment service you need assistance with.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {services.map((service) => {
-          const Icon = service.icon;
+          const Icon = getServiceIcon(service.name);
           const isSelected = selectedService === service.id;
 
           return (
             <button
               key={service.id}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => onSelect(service.id)}
               className={`relative flex min-h-[170px] flex-col items-start rounded-xl border p-5 text-left transition-all ${
                 isSelected
@@ -83,9 +91,7 @@ export default function ServiceSelection({
 
               <div
                 className={`flex h-11 w-11 items-center justify-center rounded-lg ${
-                  isSelected
-                    ? "bg-[#2845D6]/10"
-                    : "bg-muted"
+                  isSelected ? "bg-[#2845D6]/10" : "bg-muted"
                 }`}
               >
                 <Icon
@@ -102,7 +108,7 @@ export default function ServiceSelection({
               </h3>
 
               <p className="mt-1 pr-4 text-xs leading-relaxed text-muted-foreground">
-                {service.description}
+                {service.description || "Enrollment-related assistance."}
               </p>
             </button>
           );
@@ -111,5 +117,3 @@ export default function ServiceSelection({
     </div>
   );
 }
-
-export { services };

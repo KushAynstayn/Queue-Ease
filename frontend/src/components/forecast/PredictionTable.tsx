@@ -1,3 +1,4 @@
+
 import {
   Card,
   CardContent,
@@ -5,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import {
   Table,
   TableBody,
@@ -14,75 +14,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { ForecastResult } from "./ForecastSummary";
+import type { ForecastTarget } from "./ForecastFilters";
 
-import { Badge } from "@/components/ui/badge";
-
-const predictions = [
-  {
-    hour: "8:00 AM",
-    visitors: 24,
-    wait: "5 mins",
-    demand: "Low",
-  },
-  {
-    hour: "9:00 AM",
-    visitors: 49,
-    wait: "9 mins",
-    demand: "Moderate",
-  },
-  {
-    hour: "10:00 AM",
-    visitors: 84,
-    wait: "18 mins",
-    demand: "High",
-  },
-  {
-    hour: "11:00 AM",
-    visitors: 98,
-    wait: "22 mins",
-    demand: "Very High",
-  },
-  {
-    hour: "12:00 PM",
-    visitors: 75,
-    wait: "15 mins",
-    demand: "High",
-  },
-  {
-    hour: "1:00 PM",
-    visitors: 68,
-    wait: "12 mins",
-    demand: "Moderate",
-  },
-];
-
-function badgeVariant(level: string) {
-  switch (level) {
-    case "Low":
-      return "secondary";
-
-    case "Moderate":
-      return "outline";
-
-    case "High":
-      return "default";
-
-    case "Very High":
-      return "destructive";
-
-    default:
-      return "secondary";
-  }
+interface PredictionTableProps {
+  forecast: ForecastResult | null;
+  target: ForecastTarget;
 }
 
-export default function PredictionTable() {
+export default function PredictionTable({
+  forecast,
+  target,
+}: PredictionTableProps) {
+  const isTransactions = target === "total_transactions";
+
+  const prediction =
+    !forecast
+      ? null
+      : isTransactions
+        ? forecast.predicted_transactions
+        : forecast.predicted_wait_minutes;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Prediction Table</CardTitle>
-
+        <CardTitle>Prediction Results</CardTitle>
         <CardDescription>
-          Hourly AI forecast for expected queue demand.
+          Experimental daily prediction returned by the AI forecasting service.
         </CardDescription>
       </CardHeader>
 
@@ -90,35 +48,46 @@ export default function PredictionTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Expected Visitors</TableHead>
-              <TableHead>Estimated Wait</TableHead>
-              <TableHead>Demand</TableHead>
+              <TableHead>Forecast Date</TableHead>
+              <TableHead>Service ID</TableHead>
+              <TableHead>Prediction Target</TableHead>
+              <TableHead>Predicted Value</TableHead>
+              <TableHead>Model</TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {predictions.map((item) => (
-              <TableRow key={item.hour}>
+            {forecast ? (
+              <TableRow>
                 <TableCell className="font-medium">
-                  {item.hour}
+                  {forecast.forecast_date}
                 </TableCell>
-
+                <TableCell>{forecast.service_id}</TableCell>
                 <TableCell>
-                  {item.visitors}
+                  {isTransactions
+                    ? "Total Transactions"
+                    : "Average Wait (Minutes)"}
                 </TableCell>
-
                 <TableCell>
-                  {item.wait}
+                  {prediction === null || prediction === undefined
+                    ? "Not available"
+                    : isTransactions
+                      ? prediction
+                      : `${prediction} minutes`}
                 </TableCell>
-
-                <TableCell>
-                  <Badge variant={badgeVariant(item.demand)}>
-                    {item.demand}
-                  </Badge>
+                <TableCell>{forecast.model_name ?? "Not specified"}</TableCell>
+              </TableRow>
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No forecast generated yet. Select a service and future date,
+                  then click Generate Forecast.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </CardContent>

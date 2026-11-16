@@ -1,43 +1,65 @@
-const queueVolume = [
-  { time: "8 AM", clients: 8 },
-  { time: "9 AM", clients: 16 },
-  { time: "10 AM", clients: 28 },
-  { time: "11 AM", clients: 24 },
-  { time: "12 PM", clients: 14 },
-  { time: "1 PM", clients: 18 },
-  { time: "2 PM", clients: 23 },
-  { time: "3 PM", clients: 13 },
-  { time: "4 PM", clients: 7 },
-];
 
-const maxClients = Math.max(
-  ...queueVolume.map((item) => item.clients)
-);
+"use client";
 
-export function QueueVolumeChart() {
+interface HourlyVolume {
+  hour: number;
+  time: string;
+  clients: number;
+}
+
+interface QueueVolumeChartProps {
+  data: HourlyVolume[];
+  loading: boolean;
+}
+
+export function QueueVolumeChart({
+  data,
+  loading,
+}: QueueVolumeChartProps) {
+  const maxClients = Math.max(
+    ...data.map((item) => item.clients),
+    1
+  );
+
+  if (loading) {
+    return (
+      <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
+        Loading queue volume...
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="flex h-[320px] items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+        No completed queue transactions recorded today.
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="flex h-[320px] items-end gap-3 border-b border-l px-4 pb-0 pt-6 sm:gap-5">
-        {queueVolume.map((item) => {
-          const height =
-            (item.clients / maxClients) * 100;
+        {data.map((item) => {
+          const height = (item.clients / maxClients) * 100;
 
           return (
             <div
-              key={item.time}
-              className="flex h-full flex-1 flex-col justify-end gap-2"
+              key={item.hour}
+              className="flex h-full min-w-0 flex-1 flex-col justify-end gap-2"
             >
               <div className="flex flex-1 items-end justify-center">
                 <div
                   className="w-full max-w-12 rounded-t-md bg-primary transition-all hover:opacity-80"
                   style={{
                     height: `${height}%`,
+                    minHeight: "2px",
                   }}
                   title={`${item.clients} clients`}
                 />
               </div>
 
-              <span className="text-center text-xs text-muted-foreground">
+              <span className="whitespace-nowrap text-center text-xs text-muted-foreground">
                 {item.time}
               </span>
             </div>

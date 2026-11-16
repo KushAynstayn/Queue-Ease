@@ -1,3 +1,4 @@
+
 import {
   AlertTriangle,
   Clock3,
@@ -15,25 +16,73 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-const peakHours = [
-  {
-    time: "10:00 AM",
-    demand: "28 clients",
-    level: "High",
-  },
-  {
-    time: "11:00 AM",
-    demand: "24 clients",
-    level: "High",
-  },
-  {
-    time: "2:00 PM",
-    demand: "23 clients",
-    level: "Moderate",
-  },
-];
+import type { ForecastingData } from "@/types/forecast";
 
-export function PeakHoursCard() {
+interface PeakHoursCardProps {
+  historicalData: ForecastingData[];
+  loading: boolean;
+}
+
+export function PeakHoursCard({
+  historicalData,
+  loading,
+}: PeakHoursCardProps) {
+  const peakHours = Object.values(
+    historicalData.reduce<
+      Record<string, { time: string; demand: number }>
+    >((groups, record) => {
+      if (!record.peak_hour || record.total_transactions == null) {
+        return groups;
+      }
+
+      const time = record.peak_hour;
+      const demand = Number(record.total_transactions);
+
+      if (!Number.isFinite(demand)) {
+        return groups;
+      }
+
+      if (!groups[time]) {
+        groups[time] = { time, demand: 0 };
+      }
+
+      groups[time].demand += demand;
+
+      return groups;
+    }, {})
+  )
+    .sort((a, b) => b.demand - a.demand)
+    .slice(0, 3);
+
+  const highestDemand = peakHours[0]?.demand ?? 0;
+
+  function getDemandLevel(demand: number) {
+    if (highestDemand > 0 && demand >= highestDemand * 0.8) {
+      return "High";
+    }
+
+    return "Moderate";
+  }
+
+  function formatPeakHour(value: string) {
+    const match = value.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?$/);
+
+    if (!match) return value;
+
+    const hour = Number(match[1]);
+    const minute = Number(match[2] ?? 0);
+
+    if (hour > 23 || minute > 59) return value;
+
+    const date = new Date();
+    date.setHours(hour, minute, 0, 0);
+
+    return date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -42,7 +91,7 @@ export function PeakHoursCard() {
             <CardTitle>Peak Hours</CardTitle>
 
             <CardDescription>
-              Periods with higher expected queue demand.
+              Busiest hours derived from available historical records.
             </CardDescription>
           </div>
 
@@ -51,51 +100,60 @@ export function PeakHoursCard() {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {peakHours.map((peak, index) => (
-          <div key={peak.time}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                  <Clock3 className="h-4 w-4 text-muted-foreground" />
-                </div>
+        {loading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Loading historical peak-hour data...
+          </p>
+        ) : peakHours.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No historical peak-hour data is available yet.
+          </p>
+        ) : (
+          peakHours.map((peak, index) => {
+            const level = getDemandLevel(peak.demand);
 
-                <div>
-                  <p className="font-medium">
-                    {peak.time}
-                  </p>
+            return (
+              <div key={peak.time}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                      <Clock3 className="h-4 w-4 text-muted-foreground" />
+                    </div>
 
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <UsersRound className="h-3.5 w-3.5" />
-                    {peak.demand}
+                    <div>
+                      <p className="font-medium">
+                        {formatPeakHour(peak.time)}
+                      </p>
+
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <UsersRound className="h-3.5 w-3.5" />
+                        {peak.demand.toLocaleString()} recorded transactions
+                      </div>
+                    </div>
                   </div>
+
+                  <Badge
+                    variant={level === "High" ? "destructive" : "secondary"}
+                  >
+                    {level}
+                  </Badge>
                 </div>
+
+                {index < peakHours.length - 1 && (
+                  <Separator className="mt-4" />
+                )}
               </div>
-
-              <Badge
-                variant={
-                  peak.level === "High"
-                    ? "destructive"
-                    : "secondary"
-                }
-              >
-                {peak.level}
-              </Badge>
-            </div>
-
-            {index < peakHours.length - 1 && (
-              <Separator className="mt-4" />
-            )}
-          </div>
-        ))}
+            );
+          })
+        )}
 
         <div className="rounded-lg border bg-muted/30 p-4">
-          <p className="text-sm font-medium">
-            Preparation Reminder
-          </p>
+          <p className="text-sm font-medium">Preparation Reminder</p>
 
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Monitor the queue closely before the expected peak
-            period and ensure the service counter is available.
+            Use historical busy periods as a planning reference. Actual
+            queue demand may differ, so monitor the live queue before
+            adjusting counter staffing.
           </p>
         </div>
       </CardContent>

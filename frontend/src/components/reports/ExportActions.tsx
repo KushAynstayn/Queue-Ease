@@ -1,10 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   Download,
-  FileSpreadsheet,
   FileText,
-  Printer,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,48 +17,86 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function ExportActions() {
+import { downloadApiFile } from "@/lib/api";
+
+import type { ReportType } from "./types";
+
+interface ExportActionsProps {
+  reportType: ReportType;
+  startDate: string;
+  endDate: string;
+  disabled: boolean;
+}
+
+export default function ExportActions({
+  reportType,
+  startDate,
+  endDate,
+  disabled,
+}: ExportActionsProps) {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleDownload() {
+    setDownloading(true);
+    setError("");
+
+    try {
+      const params = new URLSearchParams({
+        type: reportType,
+        from: startDate,
+        to: endDate,
+      });
+
+      await downloadApiFile(
+        `/reports/pdf?${params.toString()}`,
+        `${reportType}-report.pdf`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to download the PDF report."
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Export Actions</CardTitle>
+        <CardTitle>Export Report</CardTitle>
 
         <CardDescription>
-          Download or print the selected report.
+          Download the generated report as a PDF document.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Button className="gap-2">
-            <FileText className="h-4 w-4" />
-            Export PDF
-          </Button>
+        <Button
+          onClick={handleDownload}
+          disabled={disabled || downloading}
+          className="w-full gap-2 sm:w-auto"
+        >
+          {downloading ? (
+            <>
+              <Download className="h-4 w-4 animate-pulse" />
+              Downloading...
+            </>
+          ) : (
+            <>
+              <FileText className="h-4 w-4" />
+              Export PDF
+            </>
+          )}
+        </Button>
 
-          <Button
-            variant="outline"
-            className="gap-2"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Export Excel
-          </Button>
-
-          <Button
-            variant="outline"
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-
-          <Button
-            variant="secondary"
-            className="gap-2"
-          >
-            <Printer className="h-4 w-4" />
-            Print Report
-          </Button>
-        </div>
+        {error && (
+          <p className="mt-3 text-sm text-destructive">
+            {error}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

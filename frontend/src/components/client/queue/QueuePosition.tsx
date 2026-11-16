@@ -1,6 +1,3 @@
-"use client";
-
-import { Info } from "lucide-react";
 
 interface QueuePositionProps {
   position: number;
@@ -11,57 +8,62 @@ export default function QueuePosition({
   position,
   totalWaiting,
 }: QueuePositionProps) {
+  const validPosition =
+    Number.isFinite(position) && position > 0;
+
+  const validTotalWaiting =
+    Number.isFinite(totalWaiting) && totalWaiting > 0;
+
   const progress =
-    totalWaiting > 0
+    validPosition && validTotalWaiting
       ? Math.max(
           0,
-          Math.min(100, ((totalWaiting - position + 1) / totalWaiting) * 100)
+          Math.min(
+            100,
+            ((totalWaiting - position + 1) / totalWaiting) * 100
+          )
         )
       : 0;
 
   return (
-    <div className="rounded-xl border bg-background p-5">
-      <div className="flex items-center justify-between gap-4">
+    <section className="rounded-xl border bg-card p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold">
+          <h2 className="font-semibold">
             Queue Progress
           </h2>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Your position updates as students are served.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track your position among clients waiting for this service.
           </p>
         </div>
 
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-          <Info className="h-4 w-4 text-muted-foreground" />
-        </div>
+        <p className="text-sm font-medium">
+          {validPosition ? `Position ${position}` : "Position unavailable"}
+        </p>
       </div>
 
-      <div className="mt-5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
-            Position {position}
-          </span>
-
-          <span className="font-medium">
-            {totalWaiting} waiting
-          </span>
-        </div>
-
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-[#2845D6] transition-all duration-500"
-            style={{
-              width: `${progress}%`,
-            }}
-          />
-        </div>
+      <div
+        className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-label="Queue progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <div
+          className="h-full rounded-full bg-[#2845D6] transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
-      <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        Please remain available while waiting for your queue number to be
-        called.
+      <p className="mt-3 text-sm text-muted-foreground">
+        {validTotalWaiting
+          ? `${totalWaiting} ${
+              totalWaiting === 1 ? "client is" : "clients are"
+            } currently waiting.`
+          : "The number of waiting clients is not currently available."}
       </p>
-    </div>
+    </section>
   );
 }

@@ -1,123 +1,161 @@
+
 "use client";
 
-import { Search } from "lucide-react";
+import { useState } from "react";
+import { Search, Filter } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-export default function ActivityFilters() {
+import type { FormEvent } from "react";
+
+interface ActivityFiltersState {
+  search: string;
+  from: string;
+  to: string;
+}
+
+interface ActivityFiltersProps {
+  onApply: (filters: ActivityFiltersState) => void;
+  loading: boolean;
+}
+
+export default function ActivityFilters({
+  onApply,
+  loading,
+}: ActivityFiltersProps) {
+  const [filters, setFilters] = useState<ActivityFiltersState>({
+    search: "",
+    from: "",
+    to: "",
+  });
+
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  function updateFilter(
+    field: keyof ActivityFiltersState,
+    value: string
+  ) {
+    setFilters((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+
+    setDateError(null);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (filters.from && filters.to && filters.from > filters.to) {
+      setDateError("Start date cannot be later than end date.");
+      return;
+    }
+
+    setDateError(null);
+    onApply(filters);
+  }
+
+  function handleReset() {
+    const emptyFilters = {
+      search: "",
+      from: "",
+      to: "",
+    };
+
+    setFilters(emptyFilters);
+    setDateError(null);
+    onApply(emptyFilters);
+  }
+
   return (
-    <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-      {/* Search */}
-      <div className="relative w-full lg:max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <Card>
+      <CardHeader>
+        <CardTitle>Search and Filters</CardTitle>
+      </CardHeader>
 
-        <Input
-          placeholder="Search activities..."
-          className="pl-10"
-        />
-      </div>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Search Activities
+              </label>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        {/* User Filter */}
-        <Select defaultValue="all-users">
-          <SelectTrigger className="w-full sm:w-[170px]">
-            <SelectValue placeholder="User" />
-          </SelectTrigger>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-          <SelectContent>
-            <SelectItem value="all-users">
-              All Users
-            </SelectItem>
+                <Input
+                  value={filters.search}
+                  onChange={(event) =>
+                    updateFilter("search", event.target.value)
+                  }
+                  placeholder="Search user, action, description..."
+                  className="pl-9"
+                />
+              </div>
+            </div>
 
-            <SelectItem value="administrator">
-              Administrator
-            </SelectItem>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Start Date
+              </label>
 
-            <SelectItem value="staff">
-              Staff
-            </SelectItem>
+              <Input
+                type="date"
+                value={filters.from}
+                max={filters.to || undefined}
+                onChange={(event) =>
+                  updateFilter("from", event.target.value)
+                }
+              />
+            </div>
 
-            <SelectItem value="client">
-              Client
-            </SelectItem>
-          </SelectContent>
-        </Select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                End Date
+              </label>
 
-        {/* Action Filter */}
-        <Select defaultValue="all-actions">
-          <SelectTrigger className="w-full sm:w-[170px]">
-            <SelectValue placeholder="Action" />
-          </SelectTrigger>
+              <Input
+                type="date"
+                value={filters.to}
+                min={filters.from || undefined}
+                onChange={(event) =>
+                  updateFilter("to", event.target.value)
+                }
+              />
+            </div>
+          </div>
 
-          <SelectContent>
-            <SelectItem value="all-actions">
-              All Actions
-            </SelectItem>
+          {dateError && (
+            <p className="text-sm text-red-600">
+              {dateError}
+            </p>
+          )}
 
-            <SelectItem value="login">
-              Login
-            </SelectItem>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              disabled={loading}
+            >
+              Reset
+            </Button>
 
-            <SelectItem value="logout">
-              Logout
-            </SelectItem>
-
-            <SelectItem value="create">
-              Create
-            </SelectItem>
-
-            <SelectItem value="update">
-              Update
-            </SelectItem>
-
-            <SelectItem value="delete">
-              Delete
-            </SelectItem>
-
-            <SelectItem value="sms">
-              SMS Sent
-            </SelectItem>
-
-            <SelectItem value="forecast">
-              Forecast Generated
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Date Filter */}
-        <Select defaultValue="today">
-          <SelectTrigger className="w-full sm:w-[170px]">
-            <SelectValue placeholder="Date" />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="today">
-              Today
-            </SelectItem>
-
-            <SelectItem value="week">
-              This Week
-            </SelectItem>
-
-            <SelectItem value="month">
-              This Month
-            </SelectItem>
-
-            <SelectItem value="all-time">
-              All Time
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </div>
+            <Button type="submit" disabled={loading}>
+              <Filter className="mr-2 h-4 w-4" />
+              Apply Filters
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

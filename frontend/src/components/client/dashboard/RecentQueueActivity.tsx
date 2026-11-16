@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -5,7 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
-  XCircle,
+  TicketX,
 } from "lucide-react";
 
 import {
@@ -15,28 +16,56 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const activities = [
-  {
-    queueNumber: "A-023",
-    service: "Registrar",
-    status: "Completed",
-    time: "Yesterday",
-  },
-  {
-    queueNumber: "B-017",
-    service: "Cashier",
-    status: "Completed",
-    time: "Aug 7, 2026",
-  },
-  {
-    queueNumber: "A-011",
-    service: "Registrar",
-    status: "Cancelled",
-    time: "Aug 5, 2026",
-  },
-];
+interface QueueActivity {
+  id: number;
+  queue_number: string;
+  queue_date: string;
+  status: string;
+  requested_at: string | null;
+  completed_at: string | null;
+  service?: {
+    id: number;
+    name: string;
+    code: string;
+  } | null;
+}
 
-export default function RecentQueueActivity() {
+interface RecentQueueActivityProps {
+  activities: QueueActivity[];
+  loading: boolean;
+}
+
+function formatActivityTime(activity: QueueActivity) {
+  const timestamp =
+    activity.completed_at ??
+    activity.requested_at ??
+    activity.queue_date;
+
+  if (!timestamp) return "Date unavailable";
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
+
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatStatus(status: string) {
+  return status
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export default function RecentQueueActivity({
+  activities,
+  loading,
+}: RecentQueueActivityProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -60,49 +89,76 @@ export default function RecentQueueActivity() {
       </CardHeader>
 
       <CardContent>
-        <div className="divide-y">
-          {activities.map((activity) => {
-            const completed = activity.status === "Completed";
+        {loading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Loading recent queue activity...
+          </p>
+        ) : activities.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-sm font-medium">
+              No recent queue activity
+            </p>
 
-            return (
-              <div
-                key={`${activity.queueNumber}-${activity.time}`}
-                className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                    {completed ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your queue transactions will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {activities.map((activity) => {
+              const status = activity.status.toLowerCase();
+              const completed = status === "completed";
+              const cancelled = status === "cancelled";
+              const Icon = completed
+                ? CheckCircle2
+                : cancelled
+                  ? TicketX
+                  : Clock3;
+
+              return (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+                      <Icon
+                        className={`h-4 w-4 ${
+                          completed
+                            ? "text-emerald-600"
+                            : cancelled
+                              ? "text-muted-foreground"
+                              : "text-[#2845D6]"
+                        }`}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {activity.queue_number}
+                      </p>
+
+                      <p className="truncate text-xs text-muted-foreground">
+                        {activity.service?.name ?? "Service unavailable"}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">
-                      {activity.queueNumber}
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs font-medium">
+                      {formatStatus(activity.status)}
                     </p>
 
-                    <p className="truncate text-xs text-muted-foreground">
-                      {activity.service}
-                    </p>
+                    <div className="mt-1 flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                      <Clock3 className="h-3 w-3" />
+                      {formatActivityTime(activity)}
+                    </div>
                   </div>
                 </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="text-xs font-medium">
-                    {activity.status}
-                  </p>
-
-                  <div className="mt-1 flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                    <Clock3 className="h-3 w-3" />
-                    {activity.time}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

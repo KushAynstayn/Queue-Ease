@@ -1,10 +1,10 @@
+
 "use client";
 
 import { PhoneCall } from "lucide-react";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -12,16 +12,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
-type ServeNextDialogProps = {
+type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  processing: boolean;
+  onConfirm: () => Promise<void>;
 };
 
 export function ServeNextDialog({
   open,
   onOpenChange,
-}: ServeNextDialogProps) {
+  processing,
+  onConfirm,
+}: Props) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -31,8 +36,8 @@ export function ServeNextDialog({
           </AlertDialogTitle>
 
           <AlertDialogDescription>
-            The next student in the queue will be assigned to
-            your current service counter.
+            Queue Ease will ask the server to assign the next eligible
+            waiting student to your assigned open counter.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -42,24 +47,24 @@ export function ServeNextDialog({
               <PhoneCall className="h-5 w-5 text-primary" />
             </div>
 
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Next Queue
-              </p>
-
-              <p className="font-semibold">
-                EN-043 — Maria Santos
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              The actual next queue number will be determined by the
+              backend.
+            </p>
           </div>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={processing}>
+            Cancel
+          </AlertDialogCancel>
 
-          <AlertDialogAction>
-            Call Next
-          </AlertDialogAction>
+          <Button
+            disabled={processing}
+            onClick={() => void onConfirm()}
+          >
+            {processing ? "Calling..." : "Confirm Call Next"}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -16,7 +16,6 @@ class StaffDashboardController extends Controller
         $staff = $request->user();
         $today = now()->toDateString();
 
-        // Get counters assigned to the authenticated staff member.
         $counters = ServiceCounter::with('service')
             ->where('assigned_staff_id', $staff->id)
             ->orderBy('counter_number')
@@ -24,11 +23,10 @@ class StaffDashboardController extends Controller
 
         $counterIds = $counters->pluck('id');
         $serviceIds = $counters->pluck('service_id')
+            ->filter()
             ->unique()
             ->values();
 
-        // Include today's queues belonging to the staff member's
-        // assigned services or explicitly assigned counters.
         $queueQuery = DB::table('queue_transactions')
             ->whereDate('queue_transactions.queue_date', $today)
             ->where(function ($query) use ($counterIds, $serviceIds) {
@@ -65,6 +63,12 @@ class StaffDashboardController extends Controller
                 'clients.id'
             )
             ->leftJoin(
+                'users as client_users',
+                'clients.user_id',
+                '=',
+                'client_users.id'
+            )
+            ->leftJoin(
                 'services',
                 'queue_transactions.service_id',
                 '=',
@@ -83,6 +87,7 @@ class StaffDashboardController extends Controller
             ])
             ->select([
                 'queue_transactions.id',
+                'queue_transactions.client_id',
                 'queue_transactions.queue_number',
                 'queue_transactions.queue_date',
                 'queue_transactions.status',
@@ -91,10 +96,21 @@ class StaffDashboardController extends Controller
                 'queue_transactions.estimated_wait_minutes',
                 'queue_transactions.counter_id',
                 'clients.student_number',
+                'client_users.first_name',
+                'client_users.middle_name',
+                'client_users.last_name',
                 'services.name as service_name',
                 'service_counters.name as counter_name',
                 'service_counters.counter_number',
             ])
+            ->orderByRaw(
+                "CASE queue_transactions.status
+                    WHEN 'serving' THEN 0
+                    WHEN 'called' THEN 1
+                    WHEN 'waiting' THEN 2
+                    ELSE 3
+                END"
+            )
             ->orderBy('queue_transactions.position_number')
             ->limit(10)
             ->get();

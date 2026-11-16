@@ -1,13 +1,12 @@
+
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  BellRing,
-  Check,
+  AlertCircle,
+  CheckCircle2,
   CircleUserRound,
-  Monitor,
-  Save,
-  Volume2,
+  RefreshCw,
 } from "lucide-react";
 
 import {
@@ -19,52 +18,103 @@ import {
 } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { apiRequest, ApiRequestError } from "@/lib/api";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+interface AssignedCounter {
+  id: number;
+  name: string;
+  counter_number: string;
+  status: string;
+  service: string | null;
+}
 
-import { Switch } from "@/components/ui/switch";
+interface StaffProfile {
+  id: number;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  display_name: string;
+  username: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  status: string;
+  assigned_counters: AssignedCounter[];
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 
 export function StaffProfileForm() {
-  const [displayName, setDisplayName] =
-    useState("Enrollment Staff");
+  const [profile, setProfile] = useState<StaffProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [email, setEmail] =
-    useState("staff@queueease.edu");
+  const fetchProfile = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-  const [counter, setCounter] =
-    useState("counter-01");
+    try {
+      const response = await apiRequest<ApiResponse<StaffProfile>>(
+        "/staff/profile"
+      );
 
-  const [smsAlerts, setSmsAlerts] =
-    useState(true);
+      setProfile(response.data);
+    } catch (err) {
+      setError(
+        err instanceof ApiRequestError
+          ? err.message
+          : "Unable to retrieve your staff profile."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const [notificationSound, setNotificationSound] =
-    useState(true);
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
 
-  const [theme, setTheme] =
-    useState("system");
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex min-h-48 items-center justify-center">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Loading staff profile...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const [saved, setSaved] =
-    useState(false);
+  if (error || !profile) {
+    return (
+      <Card>
+        <CardContent className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive" />
 
-  const handleSave = () => {
-    setSaved(true);
+          <div>
+            <p className="font-medium">Unable to load profile</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {error || "Staff profile information is unavailable."}
+            </p>
+          </div>
 
-    setTimeout(() => {
-      setSaved(false);
-    }, 2000);
-  };
+          <Button variant="outline" onClick={fetchProfile}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Profile Information */}
       <Card>
         <CardHeader>
           <div className="flex items-start gap-3">
@@ -74,9 +124,9 @@ export function StaffProfileForm() {
 
             <div>
               <CardTitle>Profile Information</CardTitle>
-
               <CardDescription>
-                View and update your staff account information.
+                View your staff account information. Profile changes
+                are managed by the system administrator.
               </CardDescription>
             </div>
           </div>
@@ -84,239 +134,126 @@ export function StaffProfileForm() {
 
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Display Name */}
             <div className="space-y-2">
-              <Label htmlFor="display-name">
-                Display Name
-              </Label>
-
-              <Input
-                id="display-name"
-                value={displayName}
-                onChange={(event) =>
-                  setDisplayName(event.target.value)
-                }
-                placeholder="Enter your display name"
-              />
+              <p className="text-sm font-medium">Display Name</p>
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                {profile.display_name || "Not provided"}
+              </div>
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">
-                Email Address
-              </Label>
-
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) =>
-                  setEmail(event.target.value)
-                }
-                placeholder="Enter your email address"
-              />
+              <p className="text-sm font-medium">Email Address</p>
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                {profile.email}
+              </div>
             </div>
 
-            {/* Role */}
             <div className="space-y-2">
-              <Label htmlFor="role">
-                Role
-              </Label>
+              <p className="text-sm font-medium">Username</p>
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                {profile.username}
+              </div>
+            </div>
 
-              <Input
-                id="role"
-                value="Service Staff"
-                disabled
-              />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Phone Number</p>
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                {profile.phone || "Not provided"}
+              </div>
+            </div>
 
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Role</p>
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                {profile.role}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Your role is managed by the system administrator.
               </p>
             </div>
 
-            {/* Assigned Counter */}
             <div className="space-y-2">
-              <Label>Assigned Counter</Label>
-
-              <Select
-                value={counter}
-                onValueChange={(value) => {
-                  if (value) {
-                    setCounter(value);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select counter" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="counter-01">
-                    Counter 01
-                  </SelectItem>
-
-                  <SelectItem value="counter-02">
-                    Counter 02
-                  </SelectItem>
-
-                  <SelectItem value="counter-03">
-                    Counter 03
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              <p className="text-xs text-muted-foreground">
-                The counter you are currently assigned to operate.
-              </p>
+              <p className="text-sm font-medium">Account Status</p>
+              <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    profile.status === "active"
+                      ? "bg-emerald-500"
+                      : "bg-destructive"
+                  }`}
+                />
+                <span className="capitalize">{profile.status}</span>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Notification Preferences */}
       <Card>
         <CardHeader>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <BellRing className="h-5 w-5 text-primary" />
-            </div>
-
-            <div>
-              <CardTitle>Notification Preferences</CardTitle>
-
-              <CardDescription>
-                Configure how Queue Ease notifies you about
-                important queue events.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {/* SMS Alerts */}
-          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-            <div className="flex items-start gap-3">
-              <BellRing className="mt-0.5 h-5 w-5 text-muted-foreground" />
-
-              <div>
-                <p className="text-sm font-medium">
-                  SMS Alerts
-                </p>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Receive notifications about important queue
-                  and SMS events.
-                </p>
-              </div>
-            </div>
-
-            <Switch
-              checked={smsAlerts}
-              onCheckedChange={setSmsAlerts}
-              aria-label="Toggle SMS alerts"
-            />
-          </div>
-
-          {/* Notification Sound */}
-          <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-            <div className="flex items-start gap-3">
-              <Volume2 className="mt-0.5 h-5 w-5 text-muted-foreground" />
-
-              <div>
-                <p className="text-sm font-medium">
-                  Notification Sound
-                </p>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Play a sound when an important queue event
-                  requires your attention.
-                </p>
-              </div>
-            </div>
-
-            <Switch
-              checked={notificationSound}
-              onCheckedChange={setNotificationSound}
-              aria-label="Toggle notification sound"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Appearance */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Monitor className="h-5 w-5 text-primary" />
-            </div>
-
-            <div>
-              <CardTitle>Appearance</CardTitle>
-
-              <CardDescription>
-                Choose how the Staff dashboard should appear.
-              </CardDescription>
-            </div>
-          </div>
+          <CardTitle>Assigned Counter</CardTitle>
+          <CardDescription>
+            Service counter assignments managed by the system administrator.
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <div className="max-w-md space-y-2">
-            <Label>Theme</Label>
+          {profile.assigned_counters.length > 0 ? (
+            <div className="space-y-3">
+              {profile.assigned_counters.map((counter) => (
+                <div
+                  key={counter.id}
+                  className="flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium">{counter.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {counter.counter_number}
+                      {counter.service
+                        ? ` · ${counter.service}`
+                        : ""}
+                    </p>
+                  </div>
 
-            <Select
-              value={theme}
-              onValueChange={(value) => {
-                if (value) {
-                  setTheme(value);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select theme" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="system">
-                  System Default
-                </SelectItem>
-
-                <SelectItem value="light">
-                  Light
-                </SelectItem>
-
-                <SelectItem value="dark">
-                  Dark
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            <p className="text-xs text-muted-foreground">
-              This preference will be connected to the system
-              theme settings during backend integration.
-            </p>
-          </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        counter.status === "open"
+                          ? "bg-emerald-500"
+                          : counter.status === "maintenance"
+                            ? "bg-amber-500"
+                            : "bg-muted-foreground"
+                      }`}
+                    />
+                    <span className="text-sm capitalize text-muted-foreground">
+                      {counter.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm font-medium">
+                No assigned counter
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Contact the system administrator if you need a counter assignment.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Save Changes */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={saved}
-        >
-          {saved ? (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Changes Saved
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
-            </>
-          )}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <CheckCircle2 className="h-4 w-4" />
+          Profile information is managed securely.
+        </div>
+
+        <Button variant="outline" onClick={fetchProfile}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh
         </Button>
       </div>
     </div>

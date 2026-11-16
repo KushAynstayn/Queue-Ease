@@ -9,6 +9,7 @@ use App\Models\ForecastResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -153,7 +154,7 @@ class ReportController extends Controller
         $filters = $this->validateDateFilters($request);
 
         $query = $this->applyDateFilters(
-            ForecastResult::query(),
+            ForecastResult::with('service:id,name'),
             $filters,
             'forecast_date'
         );
@@ -165,6 +166,123 @@ class ReportController extends Controller
         return ApiResponse::success(
             'Forecast report generated successfully.',
             $forecasts
+        );
+    }
+
+
+
+    /**
+     * Export a report as PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'in:queue,sms,forecast'],
+        ]);
+
+        $filters = $this->validateDateFilters($request);
+
+        $type = $validated['type'];
+
+        $title = match ($type) {
+            'queue' => 'Queue Performance Report',
+            'sms' => 'SMS Notification Report',
+            'forecast' => 'Forecast Report',
+        };
+
+        $rows = [];
+
+        if ($type === 'queue') {
+            $query = $this->applyDateFilters(
+                QueueTransaction::query(),
+                $filters,
+                'queue_date'
+            );
+
+            $rows = [
+                ['Metric', 'Value'],
+                ['Total Queues', (clone $query)->count()],
+                ['Completed', (clone $query)->where('status', 'completed')->count()],
+                ['Waiting', (clone $query)->where('status', 'waiting')->count()],
+                ['Serving', (clone $query)->where('status', 'serving')->count()],
+                ['Skipped', (clone $query)->where('status', 'skipped')->count()],
+                [
+                    'Average Waiting Time (minutes)',
+                    round((float) (clone $query)
+                        ->whereNotNull('actual_wait_minutes')
+                        ->avg('actual_wait_minutes'), 2),
+                ],
+                [
+                    'Average Service Duration (minutes)',
+                    round((float) (clone $query)
+                        ->whereNotNull('service_duration_minutes')
+                        ->avg('service_duration_minutes'), 2),
+                ],
+            ];
+        }
+
+        if ($type === 'sms') {
+            $query = $this->applyDateFilters(
+                DB::table('sms_notifications'),
+                $filters,
+                'created_at'
+            );
+
+            $rows = [
+                ['Metric', 'Value'],
+                ['Total SMS', (clone $query)->count()],
+                ['Sent', (clone $query)->where('status', 'sent')->count()],
+                ['Failed', (clone $query)->where('status', 'failed')->count()],
+                ['Pending', (clone $query)->where('status', 'pending')->count()],
+            ];
+        }
+
+        if ($type === 'forecast') {
+            $query = $this->applyDateFilters(
+                ForecastResult::with('service:id,name'),
+                $filters,
+                'forecast_date'
+            );
+
+            $forecasts = $query
+                ->orderByDesc('forecast_date')
+                ->get();
+
+            $rows = [
+                [
+                    'Forecast Date',
+                    'Service',
+                    'Predicted Transactions',
+                    'Predicted Wait (minutes)',
+                    'Peak Hour',
+                    'Model',
+                    'Confidence Score',
+                ],
+            ];
+
+            foreach ($forecasts as $forecast) {
+                $rows[] = [
+                    $forecast->forecast_date?->format('Y-m-d'),
+                    $forecast->service?->name ?? 'N/A',
+                    $forecast->predicted_transactions,
+                    $forecast->predicted_wait_minutes,
+                    $forecast->predicted_peak_hour,
+                    $forecast->model_name,
+                    $forecast->confidence_score,
+                ];
+            }
+        }
+
+        $pdf = Pdf::loadView('reports.pdf', [
+            'title' => $title,
+            'type' => $type,
+            'filters' => $filters,
+            'rows' => $rows,
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download(
+            $type . '-report-' . now()->format('Y-m-d') . '.pdf'
         );
     }
 }

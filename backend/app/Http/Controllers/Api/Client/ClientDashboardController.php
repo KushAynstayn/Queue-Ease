@@ -104,17 +104,18 @@ class ClientDashboardController extends Controller
 
 
     
-    public function activeQueue(Request $request): JsonResponse
+    
+    public function activeQueue(Request $request)
     {
         $user = $request->user();
 
         $client = Client::where('user_id', $user->id)->first();
 
         if (!$client) {
-            return ApiResponse::notFound(
-                'Client profile not found.'
-            );
+            return ApiResponse::notFound('Client profile not found.');
         }
+
+        $today = now()->toDateString();
 
         $activeQueue = QueueTransaction::query()
             ->with([
@@ -122,37 +123,60 @@ class ClientDashboardController extends Controller
                 'counter:id,name,counter_number,status',
             ])
             ->where('client_id', $client->id)
-            ->whereDate('queue_date', now()->toDateString())
-            ->whereIn('status', [
-                'waiting',
-                'called',
-                'serving',
-            ])
+            ->whereDate('queue_date', $today)
+            ->whereIn('status', ['waiting', 'called', 'serving'])
             ->orderBy('requested_at')
             ->first();
+
+        if (!$activeQueue) {
+            return ApiResponse::success(
+                'Active queue retrieved successfully.',
+                [
+                    'has_active_queue' => false,
+                    'queue' => null,
+                ]
+            );
+        }
+
+        // Count waiting queues for the same service and date.
+        $totalWaiting = QueueTransaction::query()
+            ->where('service_id', $activeQueue->service_id)
+            ->whereDate('queue_date', $today)
+            ->where('status', 'waiting')
+            ->count();
+
+        // Find the queue number currently being served for this service.
+        $currentServingQueueNumber = QueueTransaction::query()
+            ->where('service_id', $activeQueue->service_id)
+            ->whereDate('queue_date', $today)
+            ->where('status', 'serving')
+            ->orderByDesc('serving_at')
+            ->value('queue_number');
 
         return ApiResponse::success(
             'Active queue retrieved successfully.',
             [
-                'has_active_queue' => $activeQueue !== null,
-                'queue' => $activeQueue ? [
+                'has_active_queue' => true,
+                'queue' => [
                     'id' => $activeQueue->id,
                     'queue_number' => $activeQueue->queue_number,
                     'queue_date' => $activeQueue->queue_date,
                     'status' => $activeQueue->status,
                     'priority' => $activeQueue->priority,
                     'position_number' => $activeQueue->position_number,
-                    'estimated_wait_minutes' =>
-                        $activeQueue->estimated_wait_minutes,
+                    'estimated_wait_minutes' => $activeQueue->estimated_wait_minutes,
                     'requested_at' => $activeQueue->requested_at,
                     'called_at' => $activeQueue->called_at,
                     'serving_at' => $activeQueue->serving_at,
                     'service' => $activeQueue->service,
                     'counter' => $activeQueue->counter,
-                ] : null,
+                    'total_waiting' => $totalWaiting,
+                    'current_serving_queue_number' => $currentServingQueueNumber,
+                ],
             ]
         );
     }
+
 
 
 
@@ -201,7 +225,51 @@ class ClientDashboardController extends Controller
             );
         }
 
-        $notifications = $user->smsNotifications()
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'status' => [
+                'nullable',
+                'in:pending,sent,delivered,failed',
+            ],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        // Base query: only notifications belonging to the authenticated user.
+        $baseQuery = $user->smsNotifications();
+
+        // Summary is calculated from all of the client's notifications,
+        // independently of the current search and pagination.
+        $summary = [
+            'total' => (clone $baseQuery)->count(),
+
+            'delivered' => (clone $baseQuery)
+                ->where('status', 'delivered')
+                ->count(),
+
+            'latest_notification_at' => (clone $baseQuery)
+                ->latest('created_at')
+                ->value('created_at'),
+        ];
+
+        // Apply search and status filters to the notification history.
+        $query = clone $baseQuery;
+
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
+
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery
+                    ->where('message', 'like', "%{$search}%")
+                    ->orWhere('message_type', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        $notifications = $query
             ->select([
                 'id',
                 'queue_transaction_id',
@@ -214,11 +282,15 @@ class ClientDashboardController extends Controller
                 'created_at',
             ])
             ->latest('created_at')
-            ->paginate(10);
+            ->paginate($validated['per_page'] ?? 10)
+            ->withQueryString();
 
         return ApiResponse::success(
             'Client notifications retrieved successfully.',
-            $notifications
+            [
+                'summary' => $summary,
+                'notifications' => $notifications,
+            ]
         );
     }
 

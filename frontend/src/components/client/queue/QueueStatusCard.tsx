@@ -1,20 +1,3 @@
-"use client";
-
-import {
-  CheckCircle2,
-  Clock3,
-  Hash,
-  MapPin,
-  Users,
-} from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 interface QueueStatusCardProps {
   queueNumber: string;
@@ -33,116 +16,75 @@ export default function QueueStatusCard({
   estimatedWait,
   currentServing,
 }: QueueStatusCardProps) {
+  const normalizedStatus = status.toLowerCase();
+
+  const statusClass =
+    normalizedStatus === "waiting"
+      ? "bg-amber-100 text-amber-800"
+      : normalizedStatus === "please proceed" ||
+          normalizedStatus === "called"
+        ? "bg-blue-100 text-blue-800"
+        : normalizedStatus === "now serving" ||
+            normalizedStatus === "serving"
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-muted text-muted-foreground";
+
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="border-b bg-muted/20 text-center">
-        <div className="flex items-center justify-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-
-          <CardTitle className="text-base">
-            Your Queue Status
-          </CardTitle>
-        </div>
-
-        <p className="text-sm text-muted-foreground">
-          Your enrollment queue is currently active.
-        </p>
-      </CardHeader>
-
-      <CardContent className="space-y-6 p-6">
-        {/* Queue Number */}
-        <div className="text-center">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Queue Number
+    <section className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Your queue number
           </p>
 
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <Hash className="h-5 w-5 text-[#2845D6]" />
+          <h2 className="mt-1 text-4xl font-bold tracking-tight">
+            {queueNumber}
+          </h2>
 
-            <span className="text-5xl font-bold tracking-tight text-[#2845D6]">
-              {queueNumber}
-            </span>
-          </div>
-
-          <Badge className="mt-4 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-            {status}
-          </Badge>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Service: {serviceName}
+          </p>
         </div>
 
-        {/* Queue Information */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border p-4 text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#2845D6]/10">
-              <Users className="h-5 w-5 text-[#2845D6]" />
-            </div>
+        <span
+          className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-sm font-medium ${statusClass}`}
+          role="status"
+        >
+          {status}
+        </span>
+      </div>
 
-            <p className="mt-3 text-xs text-muted-foreground">
-              Your Position
-            </p>
+      <div className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-3">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Your position
+          </p>
 
-            <p className="mt-1 text-xl font-semibold">
-              {position}
-            </p>
-
-            <p className="text-xs text-muted-foreground">
-              in queue
-            </p>
-          </div>
-
-          <div className="rounded-xl border p-4 text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#2845D6]/10">
-              <Clock3 className="h-5 w-5 text-[#2845D6]" />
-            </div>
-
-            <p className="mt-3 text-xs text-muted-foreground">
-              Estimated Wait
-            </p>
-
-            <p className="mt-1 text-xl font-semibold">
-              {estimatedWait}
-            </p>
-
-            <p className="text-xs text-muted-foreground">
-              remaining
-            </p>
-          </div>
-
-          <div className="rounded-xl border p-4 text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#2845D6]/10">
-              <Hash className="h-5 w-5 text-[#2845D6]" />
-            </div>
-
-            <p className="mt-3 text-xs text-muted-foreground">
-              Currently Serving
-            </p>
-
-            <p className="mt-1 text-xl font-semibold">
-              {currentServing}
-            </p>
-
-            <p className="text-xs text-muted-foreground">
-              now serving
-            </p>
-          </div>
+          <p className="mt-1 text-xl font-semibold">
+            {position > 0 ? `#${position}` : "Not available"}
+          </p>
         </div>
 
-        {/* Service */}
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background">
-            <MapPin className="h-5 w-5 text-muted-foreground" />
-          </div>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Estimated waiting time
+          </p>
 
-          <div>
-            <p className="text-xs text-muted-foreground">
-              Enrollment Service
-            </p>
-
-            <p className="mt-1 text-sm font-semibold">
-              {serviceName}
-            </p>
-          </div>
+          <p className="mt-1 text-xl font-semibold">
+            {estimatedWait}
+          </p>
         </div>
-      </CardContent>
-    </Card>
+
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Currently serving
+          </p>
+
+          <p className="mt-1 text-xl font-semibold">
+            {currentServing}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }

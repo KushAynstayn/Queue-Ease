@@ -1,8 +1,8 @@
+
 import {
-  Activity,
-  Clock3,
-  KeyRound,
-  Server,
+  RadioTower,
+  ShieldCheck,
+  PauseCircle,
 } from "lucide-react";
 
 import {
@@ -22,72 +22,53 @@ export default function SmsGatewayStatus() {
         <CardTitle>SMS Gateway Status</CardTitle>
 
         <CardDescription>
-          Current connection status of the SMS service provider.
+          SMS provider integration status.
         </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-5">
         <div className="flex items-center justify-between rounded-lg border p-4">
           <div className="flex items-center gap-3">
-            <Server className="h-5 w-5 text-primary" />
+            <RadioTower className="h-5 w-5 text-primary" />
 
             <div>
-              <p className="font-medium">
-                Semaphore SMS API
-              </p>
-
+              <p className="font-medium">Semaphore SMS API</p>
               <p className="text-sm text-muted-foreground">
-                Active SMS Gateway
+                Planned SMS provider
               </p>
             </div>
           </div>
 
-          <Badge className="bg-green-600 hover:bg-green-600">
-            Online
-          </Badge>
+          <Badge variant="secondary">Paused</Badge>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Activity className="h-5 w-5 text-primary" />
+        <div className="flex items-start gap-3">
+          <PauseCircle className="mt-1 h-5 w-5 text-muted-foreground" />
 
           <div>
+            <p className="font-medium">Delivery Status</p>
             <p className="text-sm text-muted-foreground">
-              Connection Status
-            </p>
-
-            <p className="font-medium">
-              Connected Successfully
+              Actual SMS sending is currently disabled.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Clock3 className="h-5 w-5 text-primary" />
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-1 h-5 w-5 text-muted-foreground" />
 
           <div>
+            <p className="font-medium">API Credentials</p>
             <p className="text-sm text-muted-foreground">
-              Last Connection
-            </p>
-
-            <p className="font-medium">
-              Just now
+              Credentials remain on the backend and are never
+              exposed through the frontend.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <KeyRound className="h-5 w-5 text-primary" />
-
-          <div>
-            <p className="text-sm text-muted-foreground">
-              API Key
-            </p>
-
-            <p className="font-medium tracking-widest">
-              ********************
-            </p>
-          </div>
-        </div>
+        <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+          SMS settings and notification records can be managed
+          without submitting messages to Semaphore.
+        </p>
       </CardContent>
     </Card>
   );

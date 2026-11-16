@@ -1,81 +1,90 @@
+
 "use client";
 
 import {
   CheckCircle2,
   MoreHorizontal,
-  RotateCcw,
+  Play,
   SkipForward,
 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import type { QueueStatus } from "@/types/queue";
+
+type Props = {
+  status: QueueStatus;
+  processing: boolean;
+  onUpdateStatus: (
+    status: "serving" | "completed" | "skipped"
+  ) => void;
+};
+
 export function QueueActions({
   status,
-}: {
-  status: string;
-}) {
-  const isWaiting = status === "Waiting";
-  const isServing = status === "Serving";
+  processing,
+  onUpdateStatus,
+}: Props) {
+  // Only called and serving queues have actions here.
+  if (status !== "called" && status !== "serving") {
+    return null;
+  }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Queue actions"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
+      <DropdownMenuTrigger
+        aria-label="Queue actions"
+        disabled={processing}
+        className="inline-flex size-9 items-center justify-center rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+      >
+        <MoreHorizontal className="h-4 w-4" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-44">
-        {isWaiting && (
-          <DropdownMenuItem>
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            Serve Student
-          </DropdownMenuItem>
-        )}
-
-        {isServing && (
+        {status === "called" && (
           <>
-            <DropdownMenuItem>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Complete
+            <DropdownMenuItem
+              disabled={processing}
+              onClick={() => onUpdateStatus("serving")}
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Start Serving
             </DropdownMenuItem>
 
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={processing}
+              onClick={() => onUpdateStatus("skipped")}
+            >
               <SkipForward className="mr-2 h-4 w-4" />
               Skip
-            </DropdownMenuItem>
-
-            <DropdownMenuItem>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Recall
             </DropdownMenuItem>
           </>
         )}
 
-        {!isServing && !isWaiting && (
-          <DropdownMenuItem>
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Recall
-          </DropdownMenuItem>
+        {status === "serving" && (
+          <>
+            <DropdownMenuItem
+              disabled={processing}
+              onClick={() => onUpdateStatus("completed")}
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Complete
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              disabled={processing}
+              onClick={() => onUpdateStatus("skipped")}
+            >
+              <SkipForward className="mr-2 h-4 w-4" />
+              Skip
+            </DropdownMenuItem>
+          </>
         )}
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem>
-          View Details
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

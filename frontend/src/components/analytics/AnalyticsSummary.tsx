@@ -1,3 +1,4 @@
+
 import {
   Users,
   Clock3,
@@ -10,34 +11,42 @@ import {
   CardContent,
 } from "@/components/ui/card";
 
-const summary = [
-  {
-    title: "Total Clients Served",
-    value: "4,528",
-    description: "Last 30 days",
-    icon: Users,
-  },
-  {
-    title: "Average Waiting Time",
-    value: "13 mins",
-    description: "Across all services",
-    icon: Clock3,
-  },
-  {
-    title: "Completed Queues",
-    value: "4,211",
-    description: "92.9% completion rate",
-    icon: CheckCircle2,
-  },
-  {
-    title: "Service Efficiency",
-    value: "96%",
-    description: "Overall performance",
-    icon: Gauge,
-  },
-];
+import { AnalyticsSummaryData } from "@/types/analytics";
 
-export default function AnalyticsSummary() {
+interface AnalyticsSummaryProps {
+  data: AnalyticsSummaryData;
+}
+
+export default function AnalyticsSummary({
+  data,
+}: AnalyticsSummaryProps) {
+  const summary = [
+    {
+      title: "Clients Served",
+      value: data.clients_served.toLocaleString(),
+      description: "Completed queue transactions",
+      icon: Users,
+    },
+    {
+      title: "Average Waiting Time",
+      value: `${data.average_wait_minutes ?? 0} mins`,
+      description: "Average recorded waiting time",
+      icon: Clock3,
+    },
+    {
+      title: "Total Queues",
+      value: data.total_queues.toLocaleString(),
+      description: "Within selected date range",
+      icon: CheckCircle2,
+    },
+    {
+      title: "Completion Rate",
+      value: `${data.completion_rate}%`,
+      description: "Percentage of completed queues",
+      icon: Gauge,
+    },
+  ];
+
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {summary.map((item) => {

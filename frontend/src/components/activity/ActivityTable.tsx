@@ -1,10 +1,7 @@
+
 "use client";
 
-import {
-  ShieldCheck,
-  UserCog,
-  UserRound,
-} from "lucide-react";
+import { Activity, Loader2 } from "lucide-react";
 
 import {
   Card,
@@ -21,80 +18,47 @@ import {
 } from "@/components/ui/table";
 
 import ActionBadge from "./ActionBadge";
-import StatusBadge from "./StatusBadge";
-import ActivityActions from "./ActivityActions";
+import type { ActivityLog } from "@/app/(dashboard)/admin/logs/page";
 
-const activities = [
-  {
-    id: 1,
-    user: "Juan Dela Cruz",
-    role: "Administrator",
-    action: "Login",
-    module: "Authentication",
-    datetime: "Aug 6, 2026 • 9:00 AM",
-    status: "Success",
-  },
-  {
-    id: 2,
-    user: "Maria Santos",
-    role: "Staff",
-    action: "Update",
-    module: "Queue Monitoring",
-    datetime: "Aug 6, 2026 • 9:15 AM",
-    status: "Success",
-  },
-  {
-    id: 3,
-    user: "Peter Reyes",
-    role: "Client",
-    action: "Create",
-    module: "Queue",
-    datetime: "Aug 6, 2026 • 9:22 AM",
-    status: "Success",
-  },
-  {
-    id: 4,
-    user: "Ana Cruz",
-    role: "Client",
-    action: "Login",
-    module: "Authentication",
-    datetime: "Aug 6, 2026 • 9:30 AM",
-    status: "Failed",
-  },
-  {
-    id: 5,
-    user: "Michael Ramos",
-    role: "Staff",
-    action: "SMS",
-    module: "SMS Notifications",
-    datetime: "Aug 6, 2026 • 9:45 AM",
-    status: "Success",
-  },
-  {
-    id: 6,
-    user: "System Administrator",
-    role: "Administrator",
-    action: "Delete",
-    module: "Users & Roles",
-    datetime: "Aug 6, 2026 • 10:10 AM",
-    status: "Warning",
-  },
-];
+interface ActivityTableProps {
+  activities: ActivityLog[];
+  loading: boolean;
+}
 
-const getRoleIcon = (role: string) => {
-  switch (role) {
-    case "Administrator":
-      return ShieldCheck;
-
-    case "Staff":
-      return UserCog;
-
-    default:
-      return UserRound;
+function getUserName(user: ActivityLog["user"]) {
+  if (!user) {
+    return "Deleted / Unknown User";
   }
-};
 
-export default function ActivityTable() {
+  return [
+    user.first_name,
+    user.middle_name,
+    user.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function formatDateTime(date: string) {
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Invalid date";
+  }
+
+  return parsedDate.toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export default function ActivityTable({
+  activities,
+  loading,
+}: ActivityTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
@@ -102,37 +66,46 @@ export default function ActivityTable() {
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
               <TableHead>Action</TableHead>
               <TableHead>Module</TableHead>
-              <TableHead>Date & Time</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[70px] text-right">
-                Actions
+              <TableHead>Description</TableHead>
+              <TableHead className="whitespace-nowrap">
+                Date & Time
               </TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {activities.map((activity) => {
-              const Icon = getRoleIcon(activity.role);
-
-              return (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading activity logs...
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : activities.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Activity className="h-6 w-6" />
+                    No activity logs found.
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              activities.map((activity) => (
                 <TableRow key={activity.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                        <Icon className="h-5 w-5 text-primary" />
-                      </div>
-
-                      <span className="font-medium">
-                        {activity.user}
-                      </span>
+                  <TableCell className="font-medium">
+                    <div>
+                      <p>{getUserName(activity.user)}</p>
+                      {activity.user?.username && (
+                        <p className="text-xs text-muted-foreground">
+                          @{activity.user.username}
+                        </p>
+                      )}
                     </div>
-                  </TableCell>
-
-                  <TableCell>
-                    {activity.role}
                   </TableCell>
 
                   <TableCell>
@@ -140,23 +113,24 @@ export default function ActivityTable() {
                   </TableCell>
 
                   <TableCell>
-                    {activity.module}
+                    {activity.module || "—"}
                   </TableCell>
 
-                  <TableCell className="whitespace-nowrap">
-                    {activity.datetime}
+                  <TableCell className="max-w-[320px]">
+                    <p
+                      className="truncate text-sm"
+                      title={activity.description || ""}
+                    >
+                      {activity.description || "—"}
+                    </p>
                   </TableCell>
 
-                  <TableCell>
-                    <StatusBadge status={activity.status} />
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <ActivityActions />
+                  <TableCell className="whitespace-nowrap text-sm">
+                    {formatDateTime(activity.created_at)}
                   </TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

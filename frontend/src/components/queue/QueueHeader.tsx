@@ -1,26 +1,27 @@
- "use client";
+
+"use client";
 
 import Link from "next/link";
 import {
   ChevronRight,
-  Plus,
   Download,
   RefreshCw,
 } from "lucide-react";
 
-import { useState } from "react";
+interface QueueHeaderProps {
+  onRefresh?: () => void;
+  onExport?: () => void;
+  refreshing?: boolean;
+}
 
-import AddQueueDialog from "./dialogs/AddQueueDialog";
-
-export default function QueueHeader() {
-    const [openAddDialog, setOpenAddDialog] =
-    useState(false);
+export default function QueueHeader({
+  onRefresh,
+  onExport,
+  refreshing = false,
+}: QueueHeaderProps) {
   return (
     <section className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-      {/* Left */}
       <div>
-        {/* Breadcrumb */}
-
         <div className="mb-3 flex items-center gap-2 text-sm text-slate-500">
           <Link
             href="/admin"
@@ -36,8 +37,6 @@ export default function QueueHeader() {
           </span>
         </div>
 
-        {/* Title */}
-
         <h1 className="text-3xl font-bold text-slate-800">
           Queue Monitoring
         </h1>
@@ -49,80 +48,29 @@ export default function QueueHeader() {
         </p>
       </div>
 
-      {/* Right */}
-
       <div className="flex flex-wrap gap-3">
         <button
-          className="
-            flex
-            items-center
-            gap-2
-            rounded-xl
-            border
-            border-slate-200
-            bg-white
-            px-5
-            py-3
-            text-slate-600
-            shadow-sm
-            transition
-            hover:bg-slate-100
-          "
+          type="button"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-slate-600 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <RefreshCw size={18} />
-
-          Refresh
+          <RefreshCw
+            size={18}
+            className={refreshing ? "animate-spin" : ""}
+          />
+          {refreshing ? "Refreshing..." : "Refresh"}
         </button>
 
         <button
-          className="
-            flex
-            items-center
-            gap-2
-            rounded-xl
-            border
-            border-slate-200
-            bg-white
-            px-5
-            py-3
-            text-slate-600
-            shadow-sm
-            transition
-            hover:bg-slate-100
-          "
+          type="button"
+          onClick={onExport}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-slate-600 shadow-sm transition hover:bg-slate-100"
         >
           <Download size={18} />
-
           Export
         </button>
-
-        <button
-        onClick={() => setOpenAddDialog(true)}
-        className="
-            flex
-            items-center
-            gap-2
-            rounded-xl
-            bg-[#2845D6]
-            px-5
-            py-3
-            font-medium
-            text-white
-            shadow-lg
-            transition
-            hover:bg-[#1f39bb]
-        "
-        >
-        <Plus size={18} />
-
-            Add Queue
-        </button>
       </div>
-
-      <AddQueueDialog
-            open={openAddDialog}
-            onOpenChange={setOpenAddDialog}
-        />
     </section>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -11,7 +12,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function SystemSettings() {
+interface GeneralSettings {
+  system_name: string;
+  organization_name: string;
+  queue_prefix: string;
+  academic_year: string;
+  estimated_service_minutes: number;
+  daily_queue_reset: boolean;
+  maximum_queue_capacity: number;
+}
+
+interface SystemSettingsProps {
+  settings: GeneralSettings;
+  onChange: React.Dispatch<React.SetStateAction<GeneralSettings>>;
+}
+
+export default function SystemSettings({
+  settings,
+  onChange,
+}: SystemSettingsProps) {
   return (
     <Card>
       <CardHeader>
@@ -25,52 +44,72 @@ export default function SystemSettings() {
       <CardContent className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="systemName">
-              System Name
-            </Label>
+            <Label htmlFor="systemName">System Name</Label>
 
             <Input
               id="systemName"
-              defaultValue="Queue Ease"
+              value={settings.system_name}
+              onChange={(e) =>
+                onChange((prev) => ({
+                  ...prev,
+                  system_name: e.target.value,
+                }))
+              }
               placeholder="Enter system name"
+              maxLength={150}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="organization">
-              Organization Name
-            </Label>
+            <Label htmlFor="organization">Organization Name</Label>
 
             <Input
               id="organization"
-              defaultValue="Cebu Technological University"
+              value={settings.organization_name}
+              onChange={(e) =>
+                onChange((prev) => ({
+                  ...prev,
+                  organization_name: e.target.value,
+                }))
+              }
               placeholder="Enter organization name"
+              maxLength={150}
             />
           </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="queuePrefix">
-              Queue Prefix
-            </Label>
+            <Label htmlFor="queuePrefix">Queue Prefix</Label>
 
             <Input
               id="queuePrefix"
-              defaultValue="ENR"
+              value={settings.queue_prefix}
+              onChange={(e) =>
+                onChange((prev) => ({
+                  ...prev,
+                  queue_prefix: e.target.value.toUpperCase(),
+                }))
+              }
               placeholder="Example: ENR"
+              maxLength={20}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="academicYear">
-              Academic Year
-            </Label>
+            <Label htmlFor="academicYear">Academic Year</Label>
 
             <Input
               id="academicYear"
-              defaultValue="2026–2027"
-              placeholder="2026–2027"
+              value={settings.academic_year}
+              onChange={(e) =>
+                onChange((prev) => ({
+                  ...prev,
+                  academic_year: e.target.value,
+                }))
+              }
+              placeholder="2026-2027"
+              maxLength={20}
             />
           </div>
         </div>

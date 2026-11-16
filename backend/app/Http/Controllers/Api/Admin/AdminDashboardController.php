@@ -47,6 +47,8 @@ class AdminDashboardController extends Controller
             $today
         );
 
+        $totalQueueToday = (clone $queueToday)->count();
+
         $queueWaiting = (clone $queueToday)
             ->where('status', 'waiting')
             ->count();
@@ -155,6 +157,7 @@ class AdminDashboardController extends Controller
                 ],
 
                 'queue' => [
+                    'total' => $totalQueueToday,
                     'waiting' => $queueWaiting,
                     'called' => $queueCalled,
                     'serving' => $queueServing,

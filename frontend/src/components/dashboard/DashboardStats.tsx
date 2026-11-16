@@ -19,18 +19,21 @@ export default function DashboardStats({
   queue,
   latestForecast,
 }: DashboardStatsProps) {
-  const totalQueue =
-    queue.waiting +
-    queue.called +
-    queue.serving +
-    queue.completed +
-    queue.cancelled;
 
-  const forecastConfidence =
+  const totalQueue = queue.total;
+
+  const rawConfidence =
     latestForecast &&
     typeof latestForecast === "object" &&
     "confidence_score" in latestForecast
       ? Number(latestForecast.confidence_score)
+      : NaN;
+
+  const forecastConfidence =
+    Number.isFinite(rawConfidence) &&
+    rawConfidence >= 0 &&
+    rawConfidence <= 100
+      ? rawConfidence
       : null;
 
   const stats = [

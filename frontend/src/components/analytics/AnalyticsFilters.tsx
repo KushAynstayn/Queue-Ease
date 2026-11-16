@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,31 @@ import {
 
 import { Filter } from "lucide-react";
 
-export default function AnalyticsFilters() {
+import { ServicePerformanceData } from "@/types/analytics";
+
+interface AnalyticsFiltersProps {
+  startDate: string;
+  endDate: string;
+  serviceId: string;
+  services: ServicePerformanceData[];
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+  onServiceChange: (value: string) => void;
+  onApply: () => void;
+  loading: boolean;
+}
+
+export default function AnalyticsFilters({
+  startDate,
+  endDate,
+  serviceId,
+  services,
+  onStartDateChange,
+  onEndDateChange,
+  onServiceChange,
+  onApply,
+  loading,
+}: AnalyticsFiltersProps) {
   return (
     <Card>
       <CardHeader>
@@ -27,47 +52,50 @@ export default function AnalyticsFilters() {
       </CardHeader>
 
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-4">
-          {/* Date */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Start Date
+            </label>
+
+            <input
+              type="date"
+              value={startDate}
+              max={endDate}
+              onChange={(event) =>
+                onStartDateChange(event.target.value)
+              }
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              Date Range
+              End Date
             </label>
 
-            <Select defaultValue="month">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-
-                <SelectItem value="week">
-                  Last 7 Days
-                </SelectItem>
-
-                <SelectItem value="month">
-                  Last 30 Days
-                </SelectItem>
-
-                <SelectItem value="year">
-                  This Year
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              onChange={(event) =>
+                onEndDateChange(event.target.value)
+              }
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
           </div>
-
-          {/* Service */}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">
               Service
             </label>
 
-            <Select defaultValue="all">
+            <Select
+              value={serviceId}
+              onValueChange={(value) => onServiceChange(value ?? "all")}
+            >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="All Services" />
               </SelectTrigger>
 
               <SelectContent>
@@ -75,61 +103,29 @@ export default function AnalyticsFilters() {
                   All Services
                 </SelectItem>
 
-                <SelectItem value="registrar">
-                  Registrar
-                </SelectItem>
-
-                <SelectItem value="cashier">
-                  Cashier
-                </SelectItem>
-
-                <SelectItem value="admission">
-                  Admission
-                </SelectItem>
+                {services.map((service) => (
+                  <SelectItem
+                    key={service.service_id}
+                    value={String(service.service_id)}
+                  >
+                    {service.service_name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+        </div>
 
-          {/* Status */}
+        <div className="mt-5 flex justify-end">
+          <Button
+            onClick={onApply}
+            disabled={loading || !startDate || !endDate}
+            className="gap-2"
+          >
+            <Filter className="h-4 w-4" />
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Queue Status
-            </label>
-
-            <Select defaultValue="all">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">
-                  All
-                </SelectItem>
-
-                <SelectItem value="completed">
-                  Completed
-                </SelectItem>
-
-                <SelectItem value="cancelled">
-                  Cancelled
-                </SelectItem>
-
-                <SelectItem value="missed">
-                  Missed
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Button */}
-
-          <div className="flex items-end">
-            <Button className="w-full gap-2">
-              <Filter className="h-4 w-4" />
-              Apply Filters
-            </Button>
-          </div>
+            {loading ? "Loading..." : "Apply Filters"}
+          </Button>
         </div>
       </CardContent>
     </Card>

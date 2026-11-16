@@ -15,6 +15,11 @@ use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Staff\StaffDashboardController;
 use App\Http\Controllers\Api\Client\ClientDashboardController;
+use App\Http\Controllers\Api\Admin\ServiceController;
+use App\Http\Controllers\Api\Staff\StaffSmsController;
+use App\Http\Controllers\Api\Staff\StaffReportController;
+use App\Http\Controllers\Api\Staff\StaffProfileController;
+use App\Http\Controllers\Api\Client\ClientProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +43,10 @@ Route::prefix('v1')->group(function () {
 
     // Public authentication route
     Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:5,1');
+
+    
+    Route::post('/register', [AuthController::class, 'register'])
         ->middleware('throttle:5,1');
 
     // Protected authentication routes
@@ -139,23 +148,24 @@ Route::prefix('admin')
     |--------------------------------------------------------------------------
     */
 
+    
+/*
+|--------------------------------------------------------------------------
+| Services
+|--------------------------------------------------------------------------
+*/
+
     Route::prefix('services')
         ->middleware(['auth:sanctum', 'role:admin,staff'])
         ->group(function () {
+            Route::get('/', [ServiceController::class, 'index'])
+                ->middleware('permission:services.view');
 
-            Route::get('/', function () {
-                return response()->json([
-                    'message' => 'Services endpoint is ready.',
-                ]);
-            })->middleware('permission:services.view');
-
-            Route::get('/{id}', function ($id) {
-                return response()->json([
-                    'message' => 'Service endpoint is ready.',
-                    'id' => $id,
-                ]);
-            })->middleware('permission:services.view');
+            Route::get('/{id}', [ServiceController::class, 'show'])
+                ->whereNumber('id')
+                ->middleware('permission:services.view');
         });
+
 
 
     /*
@@ -168,11 +178,10 @@ Route::prefix('admin')
         ->middleware(['auth:sanctum', 'role:admin,staff'])
         ->group(function () {
 
-            Route::get('/', function () {
-                return response()->json([
-                    'message' => 'Counters endpoint is ready.',
-                ]);
-            })->middleware('permission:counters.view');
+            Route::get('/', [
+                ServiceController::class,
+                'counters',
+            ])->middleware('permission:counters.view');
 
             Route::get('/{id}', function ($id) {
                 return response()->json([
@@ -308,10 +317,23 @@ Route::prefix('admin')
         ->middleware(['auth:sanctum', 'role:admin'])
         ->group(function () {
 
+             Route::get('/summary', [
+                SmsController::class,
+                'summary',
+            ])->middleware('permission:sms.view');
+
+
             Route::get('/notifications', [
                 SmsController::class,
                 'index',
             ])->middleware('permission:sms.view');
+
+
+            Route::get('/notifications/{id}/status', [
+                SmsController::class,
+                'refreshStatus',
+            ])->whereNumber('id')->middleware('permission:sms.view');
+            
 
             Route::post('/send', [
                 SmsController::class,
@@ -329,6 +351,40 @@ Route::prefix('admin')
                 SmsController::class,
                 'updateSettings',
             ])->middleware('permission:sms.manage');
+        });
+
+
+
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Staff SMS Notifications
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('staff/sms')
+        ->middleware(['auth:sanctum', 'role:staff'])
+        ->group(function () {
+
+            Route::get('/summary', [
+                StaffSmsController::class,
+                'summary',
+            ])->middleware('permission:sms.view');
+
+            Route::get('/recipients', [
+                StaffSmsController::class,
+                'recipients',
+            ])->middleware('permission:sms.view');
+
+            Route::get('/notifications', [
+                StaffSmsController::class,
+                'index',
+            ])->middleware('permission:sms.view');
+
+            Route::post('/prepare', [
+                StaffSmsController::class,
+                'prepare',
+            ])->middleware('permission:sms.send');
         });
 
 
@@ -376,6 +432,9 @@ Route::prefix('admin')
 
             Route::get('/forecast', [ReportController::class, 'forecast'])
                 ->middleware('permission:reports.view');
+
+            Route::get('/pdf', [ReportController::class, 'exportPdf'])
+                ->middleware('permission:reports.view');
         });
 
     Route::get('/analytics', [AnalyticsController::class, 'index'])
@@ -383,6 +442,47 @@ Route::prefix('admin')
         'auth:sanctum',
         'role:admin,staff',
     ]);
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Staff Reports
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('staff/reports')
+        ->middleware([
+            'auth:sanctum',
+            'role:staff',
+            'permission:reports.view',
+        ])
+        ->group(function () {
+            Route::get('/summary', [
+                StaffReportController::class,
+                'summary',
+            ]);
+
+            Route::get('/queue', [
+                StaffReportController::class,
+                'queue',
+            ]);
+
+            Route::get('/sms', [
+                StaffReportController::class,
+                'sms',
+            ]);
+
+            Route::get('/forecast', [
+                StaffReportController::class,
+                'forecast',
+            ]);
+
+            Route::get('/pdf', [
+                StaffReportController::class,
+                'exportPdf',
+            ]);
+        });
 
 
     /*
@@ -406,11 +506,15 @@ Route::prefix('admin')
                 'activeQueue',
             ]);
 
-            Route::get('/profile', function () {
-                return response()->json([
-                    'message' => 'Client profile endpoint is ready.',
-                ]);
-            });
+            Route::get('/profile', [
+                ClientProfileController::class,
+                'show',
+            ]);
+
+            Route::put('/profile', [
+                ClientProfileController::class,
+                'update',
+            ]);
 
             Route::get('/queue-history', [
                 ClientDashboardController::class,
@@ -425,6 +529,12 @@ Route::prefix('admin')
             Route::put('/notification-preference', [
                 ClientDashboardController::class,
                 'updateNotificationPreference',
+            ]);
+
+
+            Route::get('/services', [
+                ServiceController::class,
+                'index',
             ]);
         });
 
@@ -469,6 +579,23 @@ Route::prefix('admin')
         'auth:sanctum',
         'role:staff',
         'permission:dashboard.view',
+    ]);
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Staff Profile
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/staff/profile', [
+        StaffProfileController::class,
+        'show',
+    ])->middleware([
+        'auth:sanctum',
+        'role:staff',
     ]);
 
 

@@ -11,6 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
+import Link from "next/link";
 
 interface LoginUser {
   id: number;
@@ -213,7 +214,8 @@ export default function LoginCard() {
             </div>
           )}
 
-          {/* Remember Me / Forgot Password */}
+          {/* Remember Me */}
+                   
           <div className="flex items-center justify-between text-sm">
             <label className="flex items-center gap-2 text-blue-100">
               <input
@@ -225,17 +227,8 @@ export default function LoginCard() {
                 disabled={isLoading}
                 className="rounded border-white/20"
               />
-
               Remember me
             </label>
-
-            <button
-              type="button"
-              disabled={isLoading}
-              className="text-cyan-200 hover:text-white disabled:opacity-50"
-            >
-              Forgot Password?
-            </button>
           </div>
 
           {/* Sign In */}
@@ -256,6 +249,16 @@ export default function LoginCard() {
             )}
           </motion.button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-blue-100">
+          Don't have an account?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-cyan-200 transition hover:text-white"
+          >
+            Create an account
+          </Link>
+        </p>
       </div>
     </motion.div>
   );

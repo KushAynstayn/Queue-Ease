@@ -1,3 +1,4 @@
+
 import {
   BrainCircuit,
   Clock3,
@@ -12,34 +13,73 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const forecastStats = [
-  {
-    title: "Forecasted Demand",
-    value: "28",
-    description: "Expected clients",
-    icon: UsersRound,
-  },
-  {
-    title: "Peak Hour",
-    value: "10:00 AM",
-    description: "Highest expected demand",
-    icon: TrendingUp,
-  },
-  {
-    title: "Estimated Wait",
-    value: "24 min",
-    description: "During peak period",
-    icon: Clock3,
-  },
-  {
-    title: "Forecast Status",
-    value: "Ready",
-    description: "Latest forecast available",
-    icon: BrainCircuit,
-  },
-];
+import type { ForecastResult } from "@/types/forecast";
 
-export function ForecastOverview() {
+interface ForecastOverviewProps {
+  forecasts: ForecastResult[];
+  loading: boolean;
+}
+
+export function ForecastOverview({
+  forecasts,
+  loading,
+}: ForecastOverviewProps) {
+  const latestForecast = forecasts.reduce<ForecastResult | null>(
+    (latest, forecast) => {
+      if (!latest) return forecast;
+
+      return new Date(forecast.created_at).getTime() >
+        new Date(latest.created_at).getTime()
+        ? forecast
+        : latest;
+    },
+    null
+  );
+
+  const forecastedDemand = latestForecast?.predicted_transactions;
+  const estimatedWait = latestForecast?.predicted_wait_minutes;
+
+  const forecastStats = [
+    {
+      title: "Forecasted Demand",
+      value:
+        forecastedDemand != null
+          ? `${forecastedDemand} clients`
+          : "—",
+      description: latestForecast
+        ? `For ${latestForecast.forecast_date}`
+        : "No saved demand forecast",
+      icon: UsersRound,
+    },
+    {
+      title: "Peak Hour",
+      value: latestForecast?.predicted_peak_hour ?? "—",
+      description: latestForecast?.predicted_peak_hour
+        ? "Saved peak-hour forecast"
+        : "Peak-hour forecasting unavailable",
+      icon: TrendingUp,
+    },
+    {
+      title: "Estimated Wait",
+      value:
+        estimatedWait != null
+          ? `${Number(estimatedWait)} min`
+          : "—",
+      description: latestForecast
+        ? `For ${latestForecast.forecast_date}`
+        : "No saved wait-time forecast",
+      icon: Clock3,
+    },
+    {
+      title: "Forecast Status",
+      value: latestForecast ? "Available" : "Unavailable",
+      description: latestForecast
+        ? `Model: ${latestForecast.model_name ?? "Not specified"}`
+        : "No saved forecast results",
+      icon: BrainCircuit,
+    },
+  ];
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {forecastStats.map((stat) => {
@@ -57,11 +97,11 @@ export function ForecastOverview() {
 
             <CardContent>
               <div className="text-2xl font-bold">
-                {stat.value}
+                {loading ? "Loading..." : stat.value}
               </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                {stat.description}
+                {loading ? "Retrieving forecast data" : stat.description}
               </p>
             </CardContent>
           </Card>

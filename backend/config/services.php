@@ -43,14 +43,14 @@ return [
     ],
 
 
-    'semaphore' => [
-        'api_key' => env('SEMAPHORE_API_KEY'),
-        'sender_name' => env('SEMAPHORE_SENDER_NAME'),
+    'unisms' => [
+        'secret_key' => env('UNISMS_SECRET_KEY'),
         'base_url' => env(
-            'SEMAPHORE_BASE_URL',
-            'https://api.semaphore.co/api/v4'
+            'UNISMS_BASE_URL',
+            'https://unismsapi.com/api'
         ),
-        'timeout' => (int) env('SEMAPHORE_TIMEOUT', 10),
+        'sender_id' => env('UNISMS_SENDER_ID', 'Unisoft'),
+        'timeout' => (int) env('UNISMS_TIMEOUT', 10),
     ],
 
 ];

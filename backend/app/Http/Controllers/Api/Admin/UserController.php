@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Services\ActivityLogService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
@@ -171,13 +173,21 @@ class UserController extends Controller
     public function store(
         Request $request,
         ActivityLogService $activityLogService
-    )
-    {
+    ) {
         $validated = $request->validate([
-            'role_id' => [
+            'account_type' => [
                 'required',
+                'string',
+                Rule::in(['admin', 'staff']),
+                Rule::exists('roles', 'name'),
+            ],
+
+            'counter_id' => [
+                'nullable',
                 'integer',
-                Rule::exists('roles', 'id'),
+                'required_if:account_type,staff',
+                'prohibited_if:account_type,admin',
+                'exists:service_counters,id',
             ],
 
             'first_name' => [
@@ -238,27 +248,61 @@ class UserController extends Controller
 
         $validated['status'] = $validated['status'] ?? 'active';
 
-        /*
-        |--------------------------------------------------------------------------
-        | Create User
-        |--------------------------------------------------------------------------
-        |
-        | User.php already uses the "hashed" cast for password.
-        | Therefore we intentionally do NOT call Hash::make() here.
-        |
-        */
-
-        $user = User::create($validated);
-
-        $activityLogService->record(
+        $user = DB::transaction(function () use (
+            $validated,
             $request,
-            'user.created',
-            'users',
-            "Created user account for {$user->username}.",
-            $user
-        );
+            $activityLogService
+        ) {
+            $role = Role::where(
+                'name',
+                $validated['account_type']
+            )->firstOrFail();
 
-        $user->load('role');
+            $user = User::create([
+                'role_id' => $role->id,
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
+                'last_name' => $validated['last_name'],
+                'username' => $validated['username'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'password' => $validated['password'],
+                'status' => $validated['status'],
+            ]);
+
+            if ($validated['account_type'] === 'staff') {
+                $counter = \App\Models\ServiceCounter::query()
+                    ->where('id', $validated['counter_id'])
+                    ->where('status', 'open')
+                    ->whereNull('assigned_staff_id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$counter) {
+                    throw ValidationException::withMessages([
+                        'counter_id' => [
+                            'The selected counter is no longer available. Please select another counter.',
+                        ],
+                    ]);
+                }
+
+                $counter->update([
+                    'assigned_staff_id' => $user->id,
+                ]);
+            }
+
+            $activityLogService->record(
+                $request,
+                'user.created',
+                'users',
+                "Created {$validated['account_type']} account for {$user->username}.",
+                $user
+            );
+
+            return $user;
+        });
+
+        $user->load('role', 'assignedCounters.service');
 
         return ApiResponse::success(
             'User created successfully.',

@@ -7,6 +7,27 @@ export interface UserRole {
   description: string | null;
 }
 
+
+export interface AvailableCounter {
+  id: number;
+  service_id: number;
+  counter_number: string;
+  name: string;
+  status: "open" | "closed";
+  assigned_staff_id: number | null;
+  service: {
+    id: number;
+    name: string;
+  };
+}
+
+export interface AvailableCountersResponse {
+  success: boolean;
+  message: string;
+  data: AvailableCounter[];
+}
+
+
 export interface AdminUser {
   id: number;
   role_id: number;
@@ -77,7 +98,8 @@ export interface UserResponse {
 }
 
 export interface CreateUserPayload {
-  role_id: number;
+  account_type: "admin" | "staff";
+  counter_id?: number;
   first_name: string;
   middle_name?: string | null;
   last_name: string;
@@ -233,4 +255,9 @@ export async function deleteUser(
   }>(`/users/${id}`, {
     method: "DELETE",
   });
+}
+
+
+export async function getAvailableCounters(): Promise<AvailableCountersResponse> {
+  return apiRequest<AvailableCountersResponse>("/counters");
 }

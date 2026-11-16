@@ -1,3 +1,4 @@
+
 import { UserRound } from "lucide-react";
 
 import { StaffProfileForm } from "@/components/staff/StaffProfileForm";
@@ -15,7 +16,7 @@ export default function StaffProfilePage() {
         </div>
 
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your profile information and staff preferences.
+          View your account information and assigned service counters.
         </p>
       </div>
 

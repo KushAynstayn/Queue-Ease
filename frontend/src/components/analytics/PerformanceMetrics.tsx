@@ -1,3 +1,4 @@
+
 import {
   Card,
   CardContent,
@@ -17,73 +18,71 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 
-const metrics = [
-  {
-    service: "Registrar",
-    served: 1245,
-    wait: "12 mins",
-    completion: "98%",
-  },
-  {
-    service: "Cashier",
-    served: 978,
-    wait: "8 mins",
-    completion: "96%",
-  },
-  {
-    service: "Admission",
-    served: 735,
-    wait: "10 mins",
-    completion: "95%",
-  },
-  {
-    service: "Guidance",
-    served: 421,
-    wait: "7 mins",
-    completion: "97%",
-  },
-];
+import { ServicePerformanceData } from "@/types/analytics";
 
-export default function PerformanceMetrics() {
+interface PerformanceMetricsProps {
+  data: ServicePerformanceData[];
+}
+
+export default function PerformanceMetrics({
+  data,
+}: PerformanceMetricsProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Service Performance</CardTitle>
 
         <CardDescription>
-          Historical performance summary for each service.
+          Performance summary for each service.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Service</TableHead>
-              <TableHead>Clients Served</TableHead>
-              <TableHead>Average Wait</TableHead>
-              <TableHead>Completion Rate</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {metrics.map((item) => (
-              <TableRow key={item.service}>
-                <TableCell className="font-medium">
-                  {item.service}
-                </TableCell>
-
-                <TableCell>{item.served}</TableCell>
-
-                <TableCell>{item.wait}</TableCell>
-
-                <TableCell>
-                  <Badge>{item.completion}</Badge>
-                </TableCell>
+        {data.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No service performance data available.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Service</TableHead>
+                <TableHead>Total Queues</TableHead>
+                <TableHead>Completed</TableHead>
+                <TableHead>Average Wait</TableHead>
+                <TableHead>Completion Rate</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+
+            <TableBody>
+              {data.map((item) => (
+                <TableRow key={item.service_id}>
+                  <TableCell className="font-medium">
+                    {item.service_name}
+                  </TableCell>
+
+                  <TableCell>
+                    {item.total_queues}
+                  </TableCell>
+
+                  <TableCell>
+                    {item.completed_queues}
+                  </TableCell>
+
+                  <TableCell>
+                    {item.average_wait_minutes ?? 0} mins
+                  </TableCell>
+
+                  <TableCell>
+                    <Badge>
+                      {item.completion_rate}%
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

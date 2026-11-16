@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -18,47 +19,58 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const data = [
-  { day: "Mon", clients: 145 },
-  { day: "Tue", clients: 188 },
-  { day: "Wed", clients: 172 },
-  { day: "Thu", clients: 205 },
-  { day: "Fri", clients: 224 },
-  { day: "Sat", clients: 158 },
-];
+import { QueueTrendData } from "@/types/analytics";
 
-export default function QueueTrendChart() {
+interface QueueTrendChartProps {
+  data: QueueTrendData[];
+}
+
+export default function QueueTrendChart({
+  data,
+}: QueueTrendChartProps) {
+  const chartData = data.map((item) => ({
+    date: item.date,
+    total: item.total,
+  }));
+
   return (
     <Card className="h-full">
       <CardHeader>
         <CardTitle>Queue Trend</CardTitle>
 
         <CardDescription>
-          Number of clients served during the selected period.
+          Number of queue transactions during the selected period.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
-        <div className="h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
+        {chartData.length === 0 ? (
+          <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
+            No queue trend data available.
+          </div>
+        ) : (
+          <div className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
 
-              <XAxis dataKey="day" />
+                <XAxis dataKey="date" />
 
-              <YAxis />
+                <YAxis allowDecimals={false} />
 
-              <Tooltip />
+                <Tooltip />
 
-              <Line
-                type="monotone"
-                dataKey="clients"
-                stroke="#2563eb"
-                strokeWidth={3}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  name="Queues"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

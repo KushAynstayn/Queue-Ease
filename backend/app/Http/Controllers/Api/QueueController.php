@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use App\Services\ActivityLogService;
+use App\Services\QueueSmsNotificationService;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+use Carbon\Carbon;
 
 class QueueController extends Controller
 {
@@ -199,7 +203,8 @@ class QueueController extends Controller
 
         $queues = $query
             ->orderBy('queue_transactions.queue_date', 'desc')
-            ->orderBy('queue_transactions.position_number')
+            ->orderBy('queue_transactions.requested_at', 'desc')
+            ->orderBy('queue_transactions.id', 'desc')
             ->paginate($perPage);
 
         return ApiResponse::success(
@@ -215,7 +220,8 @@ class QueueController extends Controller
     
     public function store(
         Request $request,
-        ActivityLogService $activityLogService
+        ActivityLogService $activityLogService,
+        QueueSmsNotificationService $queueSms
     )
     {
         $validated = $request->validate([
@@ -345,6 +351,20 @@ class QueueController extends Controller
             "Client created queue {$queue->queue_number}.",
             \App\Models\QueueTransaction::find($queueId)
         );
+
+
+        // Send queue confirmation after successful queue creation.
+        try {
+            $queueSms->sendForQueue(
+                $queueId,
+                'queue_confirmation'
+            );
+        } catch (Throwable $exception) {
+            Log::error('Queue confirmation SMS integration error.', [
+                'queue_id' => $queueId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return ApiResponse::success(
             'Queue transaction created successfully.',
@@ -535,13 +555,11 @@ class QueueController extends Controller
                 }
 
                 if ($queue->requested_at) {
-                    $updates['actual_wait_minutes'] =
-                        max(
-                            0,
-                            now()->diffInMinutes(
-                                $queue->requested_at
-                            )
-                        );
+                    $requestedAt = Carbon::parse($queue->requested_at);
+
+                    $updates['actual_wait_minutes'] = (int) round(
+                        abs($requestedAt->diffInMinutes(now()))
+                    );
                 }
             }
 
@@ -553,13 +571,11 @@ class QueueController extends Controller
                 }
 
                 if ($queue->serving_at) {
-                    $updates['service_duration_minutes'] =
-                        max(
-                            0,
-                            now()->diffInMinutes(
-                                $queue->serving_at
-                            )
-                        );
+                    $servingAt = Carbon::parse($queue->serving_at);
+
+                    $updates['service_duration_minutes'] = (int) round(
+                        abs($servingAt->diffInMinutes(now()))
+                    );
                 }
             }
 
@@ -676,7 +692,8 @@ class QueueController extends Controller
 
     public function serveNext(
         Request $request,
-        ActivityLogService $activityLogService
+        ActivityLogService $activityLogService,
+        QueueSmsNotificationService $queueSms
     )
     {
         $validated = $request->validate([
@@ -762,6 +779,20 @@ class QueueController extends Controller
             "Staff called queue {$servedQueue->queue_number}.",
             \App\Models\QueueTransaction::find($servedQueue->id)
         );
+
+
+        // Send now-serving SMS after successfully calling the student.
+        try {
+            $queueSms->sendForQueue(
+                $servedQueue->id,
+                'now_serving'
+            );
+        } catch (Throwable $exception) {
+            Log::error('Now-serving SMS integration error.', [
+                'queue_id' => $servedQueue->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return ApiResponse::success(
             'Next student called successfully.',

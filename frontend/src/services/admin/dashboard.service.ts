@@ -11,6 +11,7 @@ export interface AdminDashboardData {
   };
 
   queue: {
+    total: number;
     waiting: number;
     called: number;
     serving: number;

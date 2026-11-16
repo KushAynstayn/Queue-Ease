@@ -1,3 +1,4 @@
+
 "use client";
 
 import { MonitorCheck } from "lucide-react";
@@ -9,72 +10,86 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-export function CounterStatus() {
+type Counter = {
+  id: number;
+  counter_number: string;
+  name: string;
+  status: "open" | "closed" | "maintenance";
+  service_id: number | null;
+  service?: {
+    id: number;
+    name: string;
+    code: string;
+  } | null;
+};
+
+type Props = {
+  counters: Counter[];
+};
+
+export function CounterStatus({ counters }: Props) {
   return (
     <Card className="h-full">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle>My Counter</CardTitle>
-
             <CardDescription>
-              Current service counter status.
+              Your assigned service counter status.
             </CardDescription>
           </div>
-
           <MonitorCheck className="h-5 w-5 text-muted-foreground" />
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
-        <div className="rounded-xl border p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                Counter
-              </p>
-
-              <p className="mt-1 text-2xl font-bold">
-                Counter 02
-              </p>
-            </div>
-
-            <Badge variant="default">OPEN</Badge>
+      <CardContent className="space-y-4">
+        {counters.length === 0 ? (
+          <div className="rounded-xl border border-dashed p-6 text-center">
+            <p className="font-medium">No assigned counter</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Contact your administrator to check your counter assignment.
+            </p>
           </div>
+        ) : (
+          counters.map((counter) => (
+            <div
+              key={counter.id}
+              className="rounded-xl border p-5"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Counter</p>
+                  <p className="mt-1 text-xl font-bold">
+                    {counter.name || `Counter ${counter.counter_number}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    No. {counter.counter_number}
+                  </p>
+                </div>
 
-          <Separator className="my-5" />
+                <Badge
+                  variant={
+                    counter.status === "open" ? "default" : "secondary"
+                  }
+                >
+                  {counter.status.toUpperCase()}
+                </Badge>
+              </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                Assigned Staff
-              </span>
+              <Separator className="my-4" />
 
-              <span className="font-medium">
-                Service Staff
-              </span>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Service</span>
+                <span className="text-right font-medium">
+                  {counter.service?.name ?? "No service assigned"}
+                </span>
+              </div>
             </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                Current Queue
-              </span>
-
-              <span className="font-medium">
-                EN-042
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <Button variant="outline" className="w-full">
-          Close Counter
-        </Button>
+          ))
+        )}
       </CardContent>
     </Card>
   );

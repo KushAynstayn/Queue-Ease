@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -18,104 +19,112 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const forecastData = [
-  {
-    time: "8 AM",
-    demand: 8,
-  },
-  {
-    time: "9 AM",
-    demand: 14,
-  },
-  {
-    time: "10 AM",
-    demand: 28,
-  },
-  {
-    time: "11 AM",
-    demand: 24,
-  },
-  {
-    time: "12 PM",
-    demand: 16,
-  },
-  {
-    time: "1 PM",
-    demand: 19,
-  },
-  {
-    time: "2 PM",
-    demand: 23,
-  },
-  {
-    time: "3 PM",
-    demand: 12,
-  },
-  {
-    time: "4 PM",
-    demand: 7,
-  },
-];
+import type { ForecastingData } from "@/types/forecast";
 
-export function ForecastChart() {
+interface ForecastChartProps {
+  historicalData: ForecastingData[];
+  loading: boolean;
+}
+
+export function ForecastChart({
+  historicalData,
+  loading,
+}: ForecastChartProps) {
+  const chartData = [...historicalData]
+    .filter((record) => record.total_transactions != null)
+    .sort(
+      (a, b) =>
+        new Date(a.forecast_date).getTime() -
+        new Date(b.forecast_date).getTime()
+    )
+    .map((record) => ({
+      date: record.forecast_date,
+      demand: Number(record.total_transactions),
+    }));
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Forecasted Queue Demand</CardTitle>
+        <CardTitle>Historical Queue Demand</CardTitle>
 
         <CardDescription>
-          Expected queue volume throughout the service day.
+          Recorded transaction volume by date. These are historical values,
+          not AI-generated predictions.
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         <div className="h-[350px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={forecastData}
-              margin={{
-                top: 10,
-                right: 10,
-                left: 0,
-                bottom: 0,
-              }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-              />
-
-              <XAxis
-                dataKey="time"
-                tickLine={false}
-                axisLine={false}
-                fontSize={12}
-              />
-
-              <YAxis
-                allowDecimals={false}
-                tickLine={false}
-                axisLine={false}
-                fontSize={12}
-              />
-
-              <Tooltip
-                cursor={{ fill: "hsl(var(--muted))" }}
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid hsl(var(--border))",
-                  backgroundColor: "hsl(var(--background))",
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Loading historical queue data...
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+              No historical demand data is available yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: 0,
+                  bottom: 0,
                 }}
-              />
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
 
-              <Bar
-                dataKey="demand"
-                name="Expected Clients"
-                radius={[4, 4, 0, 0]}
-                fill="hsl(var(--primary))"
-              />
-            </BarChart>
-          </ResponsiveContainer>
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                  tickFormatter={(value: string) =>
+                    new Date(`${value}T00:00:00`).toLocaleDateString(
+                      "en-PH",
+                      {
+                        month: "short",
+                        day: "numeric",
+                      }
+                    )
+                  }
+                />
+
+                <YAxis
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                />
+
+                <Tooltip
+                  labelFormatter={(value) => `Date: ${String(value)}`}
+                  formatter={(value) => [
+                    `${value} transactions`,
+                    "Recorded Demand",
+                  ]}
+                  cursor={{ fill: "hsl(var(--muted))" }}
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "hsl(var(--background))",
+                  }}
+                />
+
+                <Bar
+                  dataKey="demand"
+                  name="Recorded Transactions"
+                  radius={[4, 4, 0, 0]}
+                  fill="hsl(var(--primary))"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>

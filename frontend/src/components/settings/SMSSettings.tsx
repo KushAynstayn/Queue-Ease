@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -12,15 +13,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
-export default function SMSSettings() {
+interface SmsSettings {
+  enabled: boolean;
+  queue_confirmation_enabled: boolean;
+  queue_update_enabled: boolean;
+  now_serving_enabled: boolean;
+  service_delay_enabled: boolean;
+  alert_threshold_minutes: number;
+  sender_name: string | null;
+}
+
+interface SMSSettingsProps {
+  settings: SmsSettings;
+  onChange: React.Dispatch<React.SetStateAction<SmsSettings>>;
+}
+
+export default function SMSSettings({
+  settings,
+  onChange,
+}: SMSSettingsProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>SMS Settings</CardTitle>
 
         <CardDescription>
-          Configure SMS notifications sent to students during the enrollment
-          process.
+          Configure SMS notifications sent to students during the enrollment process.
         </CardDescription>
       </CardHeader>
 
@@ -39,7 +57,13 @@ export default function SMSSettings() {
 
           <Switch
             id="enableSms"
-            defaultChecked
+            checked={settings.enabled}
+            onCheckedChange={(checked) =>
+              onChange((prev) => ({
+                ...prev,
+                enabled: checked,
+              }))
+            }
           />
         </div>
 
@@ -51,13 +75,19 @@ export default function SMSSettings() {
 
           <Input
             id="senderName"
-            defaultValue="QueueEase"
+            value={settings.sender_name ?? ""}
+            onChange={(e) =>
+              onChange((prev) => ({
+                ...prev,
+                sender_name: e.target.value,
+              }))
+            }
             placeholder="QueueEase"
+            maxLength={50}
           />
 
           <p className="text-xs text-muted-foreground">
-            The sender name displayed in SMS messages, subject to your SMS
-            provider's approval.
+            The sender name displayed in SMS messages, subject to your SMS provider's approval.
           </p>
         </div>
 
@@ -70,13 +100,18 @@ export default function SMSSettings() {
           <Input
             id="notificationTime"
             type="number"
-            defaultValue={10}
-            min={1}
+            value={settings.alert_threshold_minutes}
+            onChange={(e) =>
+              onChange((prev) => ({
+                ...prev,
+                alert_threshold_minutes: Number(e.target.value),
+              }))
+            }
+            min={0}
           />
 
           <p className="text-xs text-muted-foreground">
-            Number of minutes before a student's turn that an SMS reminder is
-            sent.
+            Number of minutes before a student's turn that an SMS reminder is sent.
           </p>
         </div>
       </CardContent>

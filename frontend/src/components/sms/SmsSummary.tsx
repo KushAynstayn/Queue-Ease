@@ -1,66 +1,93 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
-  BadgeCheck,
-  MessageSquare,
   AlertTriangle,
-  RadioTower,
+  Clock,
+  Send,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { getSmsSummary, SmsSummaryData } from "@/lib/sms";
 
-const summary = [
+const summaryCards = [
   {
-    title: "SMS Sent Today",
-    value: "248",
-    description: "Messages delivered today",
-    icon: MessageSquare,
+    key: "sent",
+    title: "Sent Today",
+    description: "Accepted by the SMS provider",
+    icon: Send,
   },
   {
-    title: "Successful",
-    value: "242",
-    description: "Successfully delivered",
-    icon: BadgeCheck,
+    key: "pending",
+    title: "Pending",
+    description: "Awaiting processing",
+    icon: Clock,
   },
   {
+    key: "failed",
     title: "Failed",
-    value: "6",
-    description: "Delivery failed",
+    description: "Unsuccessful SMS attempts",
     icon: AlertTriangle,
   },
-  {
-    title: "Gateway Status",
-    value: "Online",
-    description: "Semaphore API",
-    icon: RadioTower,
-    status: "Online",
-  },
-];
+] as const;
 
 export default function SmsSummary() {
+  const [summary, setSummary] = useState<SmsSummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSummary() {
+      try {
+        const response = await getSmsSummary();
+
+        if (active) {
+          setSummary(response.data);
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to retrieve SMS summary."
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadSummary();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {summary.map((item) => {
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {summaryCards.map((item) => {
         const Icon = item.icon;
 
         return (
-          <Card key={item.title}>
+          <Card key={item.key}>
             <CardContent className="flex items-center justify-between p-6">
               <div>
                 <p className="text-sm text-muted-foreground">
                   {item.title}
                 </p>
 
-                <div className="mt-2 flex items-center gap-2">
-                  <h2 className="text-3xl font-bold">
-                    {item.value}
-                  </h2>
-
-                  {item.status && (
-                    <Badge className="bg-green-600 hover:bg-green-600">
-                      {item.status}
-                    </Badge>
-                  )}
-                </div>
+                <h2 className="mt-2 text-3xl font-bold">
+                  {loading
+                    ? "..."
+                    : summary
+                      ? summary[item.key]
+                      : "—"}
+                </h2>
 
                 <p className="mt-1 text-xs text-muted-foreground">
                   {item.description}
@@ -74,6 +101,12 @@ export default function SmsSummary() {
           </Card>
         );
       })}
+
+      {error && (
+        <p className="text-sm text-destructive sm:col-span-2 xl:col-span-3">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

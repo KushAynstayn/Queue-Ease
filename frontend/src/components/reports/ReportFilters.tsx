@@ -1,133 +1,124 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
 import { FileText } from "lucide-react";
 
-export default function ReportFilters() {
+import type { ReportType } from "./types";
+
+interface ReportFiltersProps {
+  startDate: string;
+  endDate: string;
+  reportType: ReportType;
+  loading: boolean;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+  onReportTypeChange: (value: ReportType) => void;
+  onGenerate: () => void;
+}
+
+export default function ReportFilters({
+  startDate,
+  endDate,
+  reportType,
+  loading,
+  onStartDateChange,
+  onEndDateChange,
+  onReportTypeChange,
+  onGenerate,
+}: ReportFiltersProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Report Filters</CardTitle>
+        <CardTitle>Generate Report</CardTitle>
       </CardHeader>
 
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-5">
-          {/* Date */}
-
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Date Range
+            <label
+              htmlFor="report-start-date"
+              className="text-sm font-medium"
+            >
+              Start Date
             </label>
 
-            <Select defaultValue="month">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">Last 7 Days</SelectItem>
-                <SelectItem value="month">Last 30 Days</SelectItem>
-                <SelectItem value="year">This Year</SelectItem>
-              </SelectContent>
-            </Select>
+            <input
+              id="report-start-date"
+              type="date"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(event) =>
+                onStartDateChange(event.target.value)
+              }
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            />
           </div>
 
-          {/* Service */}
-
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Service
+            <label
+              htmlFor="report-end-date"
+              className="text-sm font-medium"
+            >
+              End Date
             </label>
 
-            <Select defaultValue="all">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">All Services</SelectItem>
-                <SelectItem value="registrar">Registrar</SelectItem>
-                <SelectItem value="cashier">Cashier</SelectItem>
-                <SelectItem value="admission">Admission</SelectItem>
-              </SelectContent>
-            </Select>
+            <input
+              id="report-end-date"
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(event) =>
+                onEndDateChange(event.target.value)
+              }
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            />
           </div>
 
-          {/* Report Type */}
-
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <label
+              htmlFor="report-type"
+              className="text-sm font-medium"
+            >
               Report Type
             </label>
 
-            <Select defaultValue="queue">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="queue">
-                  Queue Report
-                </SelectItem>
-
-                <SelectItem value="analytics">
-                  Analytics Report
-                </SelectItem>
-
-                <SelectItem value="forecast">
-                  Forecast Report
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              id="report-type"
+              value={reportType}
+              onChange={(event) =>
+                onReportTypeChange(
+                  event.target.value as ReportType
+                )
+              }
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="queue">Queue Report</option>
+              <option value="sms">SMS Report</option>
+              <option value="forecast">Forecast Report</option>
+            </select>
           </div>
+        </div>
 
-          {/* Status */}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Status
-            </label>
-
-            <Select defaultValue="all">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
-                <SelectItem value="processing">
-                  Processing
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Button */}
-
-          <div className="flex items-end">
-            <Button className="w-full gap-2">
-              <FileText className="h-4 w-4" />
-              Generate
-            </Button>
-          </div>
+        <div className="mt-5 flex justify-end">
+          <Button
+            onClick={onGenerate}
+            disabled={
+              loading ||
+              !startDate ||
+              !endDate ||
+              startDate > endDate
+            }
+            className="gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            {loading ? "Generating..." : "Generate Report"}
+          </Button>
         </div>
       </CardContent>
     </Card>

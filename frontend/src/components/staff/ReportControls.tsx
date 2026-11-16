@@ -1,7 +1,8 @@
+
 "use client";
 
-import { Download, FileBarChart } from "lucide-react";
 import { useState } from "react";
+import { Download, FileBarChart } from "lucide-react";
 
 import {
   Card,
@@ -21,11 +22,57 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { downloadApiFile, ApiRequestError } from "@/lib/api";
+
+type ReportType = "queue-performance" | "sms-log" | "forecast-summary";
+
+const reportTypeMap: Record<ReportType, string> = {
+  "queue-performance": "queue",
+  "sms-log": "sms",
+  "forecast-summary": "forecast",
+};
+
+function getToday(): string {
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 export function ReportControls() {
   const [reportType, setReportType] =
-    useState("queue-performance");
+    useState<ReportType>("queue-performance");
 
-  const [format, setFormat] = useState("pdf");
+  const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleGenerateReport = async () => {
+    setIsExporting(true);
+    setError("");
+
+    try {
+      const backendType = reportTypeMap[reportType];
+      const date = getToday();
+
+      const endpoint =
+        `/staff/reports/pdf?type=${backendType}&date=${date}`;
+
+      const filename = `staff-${backendType}-report-${date}.pdf`;
+
+      await downloadApiFile(endpoint, filename);
+    } catch (err) {
+      setError(
+        err instanceof ApiRequestError || err instanceof Error
+          ? err.message
+          : "Unable to generate the report."
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <Card>
@@ -39,7 +86,7 @@ export function ReportControls() {
             <CardTitle>Generate Report</CardTitle>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Select a report type and file format.
+              Select a report type and download it as a PDF.
             </p>
           </div>
         </div>
@@ -53,13 +100,13 @@ export function ReportControls() {
             <Select
               value={reportType}
               onValueChange={(value) => {
-                if (value) {
-                  setReportType(value);
-                }
+                setReportType(value as ReportType);
+                setError("");
               }}
+              disabled={isExporting}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select report type" />
               </SelectTrigger>
 
               <SelectContent>
@@ -81,41 +128,39 @@ export function ReportControls() {
           <div className="space-y-2">
             <Label>Format</Label>
 
-            <Select
-              value={format}
-              onValueChange={(value) => {
-                if (value) {
-                  setFormat(value);
-                }
-              }}
-            >
+            <Select value="pdf" disabled>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
 
               <SelectContent>
-                <SelectItem value="pdf">
-                  PDF
-                </SelectItem>
-
-                <SelectItem value="csv">
-                  CSV
-                </SelectItem>
-
-                <SelectItem value="xlsx">
-                  XLSX
-                </SelectItem>
+                <SelectItem value="pdf">PDF</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex items-end">
-            <Button className="w-full">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={handleGenerateReport}
+              disabled={isExporting}
+            >
               <Download className="mr-2 h-4 w-4" />
-              Generate Report
+              {isExporting ? "Generating..." : "Generate Report"}
             </Button>
           </div>
         </div>
+
+        {error && (
+          <p className="mt-4 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Reports are generated using today's records from your assigned services and counters.
+        </p>
       </CardContent>
     </Card>
   );

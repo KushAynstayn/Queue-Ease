@@ -56,14 +56,15 @@ export default function AddUserDialog({
         }
       />
 
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             Add New User
           </DialogTitle>
 
           <DialogDescription>
-            Create a new system account and assign a role.
+            Create a new Administrator or Staff account.
+            Staff accounts must be assigned to an available service counter.
           </DialogDescription>
         </DialogHeader>
 

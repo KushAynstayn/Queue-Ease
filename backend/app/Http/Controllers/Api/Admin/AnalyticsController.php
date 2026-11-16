@@ -9,81 +9,181 @@ use Illuminate\Support\Facades\DB;
 
 class AnalyticsController extends Controller
 {
-    /**
-     * Get queue analytics.
-     */
     public function index(Request $request)
     {
-        $query = DB::table('queue_transactions');
+        $validated = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'service_id' => ['nullable', 'integer', 'exists:services,id'],
+        ]);
 
-        if ($request->filled('start_date')) {
-            $query->whereDate('queue_date', '>=', $request->start_date);
+        $startDate = $validated['start_date']
+            ?? now()->subDays(29)->toDateString();
+
+        $endDate = $validated['end_date']
+            ?? now()->toDateString();
+
+        // Base query: all queue transactions within the date range.
+        $query = DB::table('queue_transactions')
+            ->whereBetween('queue_date', [$startDate, $endDate]);
+
+        // Optional service filter.
+        if (!empty($validated['service_id'])) {
+            $query->where(
+                'service_id',
+                $validated['service_id']
+            );
         }
 
-        if ($request->filled('end_date')) {
-            $query->whereDate('queue_date', '<=', $request->end_date);
-        }
-
+        // Summary metrics.
         $totalQueues = (clone $query)->count();
 
-        $completed = (clone $query)
+        $completedQueues = (clone $query)
             ->where('status', 'completed')
             ->count();
 
-        $waiting = (clone $query)
-            ->where('status', 'waiting')
-            ->count();
-
-        $serving = (clone $query)
-            ->where('status', 'serving')
-            ->count();
-
-        $skipped = (clone $query)
-            ->where('status', 'skipped')
-            ->count();
-
-        $averageWaitMinutes = (clone $query)
+        $averageWait = (clone $query)
+            ->where('status', 'completed')
             ->whereNotNull('actual_wait_minutes')
             ->avg('actual_wait_minutes');
 
-        $averageServiceDuration = (clone $query)
-            ->whereNotNull('service_duration_minutes')
-            ->avg('service_duration_minutes');
+        $completionRate = $totalQueues > 0
+            ? ($completedQueues / $totalQueues) * 100
+            : 0;
 
-        $peakHour = (clone $query)
+        // Completed queues grouped by date.
+        $queueTrend = (clone $query)
+            ->where('status', 'completed')
             ->select(
-                DB::raw('HOUR(requested_at) as hour'),
+                'queue_date',
                 DB::raw('COUNT(*) as total')
             )
-            ->whereNotNull('requested_at')
-            ->groupBy(DB::raw('HOUR(requested_at)'))
+            ->groupBy('queue_date')
+            ->orderBy('queue_date')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'date' => $item->queue_date,
+                    'total' => (int) $item->total,
+                ];
+            });
+
+        // Completed queue distribution by service.
+        $serviceDistribution = (clone $query)
+            ->join(
+                'services',
+                'queue_transactions.service_id',
+                '=',
+                'services.id'
+            )
+            ->where('queue_transactions.status', 'completed')
+            ->select(
+                'services.id as service_id',
+                'services.name as service_name',
+                DB::raw('COUNT(queue_transactions.id) as total')
+            )
+            ->groupBy(
+                'services.id',
+                'services.name'
+            )
             ->orderByDesc('total')
-            ->first();
-
-        $queuesByStatus = (clone $query)
-            ->select(
-                'status',
-                DB::raw('COUNT(*) as total')
-            )
-            ->groupBy('status')
-            ->orderBy('status')
             ->get();
+
+        $distributionTotal = $serviceDistribution->sum('total');
+
+        $serviceDistribution = $serviceDistribution
+            ->map(function ($item) use ($distributionTotal) {
+                return [
+                    'service_id' => (int) $item->service_id,
+                    'service_name' => $item->service_name,
+                    'total' => (int) $item->total,
+                    'percentage' => $distributionTotal > 0
+                        ? round(
+                            ($item->total / $distributionTotal) * 100,
+                            2
+                        )
+                        : 0,
+                ];
+            });
+
+        // Performance metrics grouped by service.
+        $servicePerformance = (clone $query)
+            ->join(
+                'services',
+                'queue_transactions.service_id',
+                '=',
+                'services.id'
+            )
+            ->select(
+                'services.id as service_id',
+                'services.name as service_name',
+                DB::raw('COUNT(queue_transactions.id) as total_queues'),
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN queue_transactions.status = 'completed'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as completed_queues
+                "),
+                DB::raw("
+                    AVG(
+                        CASE
+                            WHEN queue_transactions.status = 'completed'
+                            THEN queue_transactions.actual_wait_minutes
+                            ELSE NULL
+                        END
+                    ) as average_wait_minutes
+                ")
+            )
+            ->groupBy(
+                'services.id',
+                'services.name'
+            )
+            ->orderBy('services.name')
+            ->get()
+            ->map(function ($item) {
+                $total = (int) $item->total_queues;
+                $completed = (int) $item->completed_queues;
+
+                return [
+                    'service_id' => (int) $item->service_id,
+                    'service_name' => $item->service_name,
+                    'total_queues' => $total,
+                    'completed_queues' => $completed,
+                    'average_wait_minutes' => $item->average_wait_minutes !== null
+                        ? round((float) $item->average_wait_minutes, 2)
+                        : null,
+                    'completion_rate' => $total > 0
+                        ? round(($completed / $total) * 100, 2)
+                        : 0,
+                ];
+            });
 
         return ApiResponse::success(
             'Analytics retrieved successfully.',
             [
-                'total_queues' => $totalQueues,
-                'completed' => $completed,
-                'waiting' => $waiting,
-                'serving' => $serving,
-                'skipped' => $skipped,
-                'average_wait_minutes' => round((float) $averageWaitMinutes, 2),
-                'average_service_duration_minutes' => round((float) $averageServiceDuration, 2),
-                'peak_hour' => $peakHour ? [
-                    'hour' => (int) $peakHour->hour,
-                    'total' => (int) $peakHour->total,
-                ] : null,
-                'queues_by_status' => $queuesByStatus,
+                'summary' => [
+                    'clients_served' => $completedQueues,
+                    'average_wait_minutes' => $averageWait !== null
+                        ? round((float) $averageWait, 2)
+                        : null,
+                    'completion_rate' => round($completionRate, 2),
+                    'total_queues' => $totalQueues,
+                ],
+
+                'queue_trend' => $queueTrend,
+
+                'service_distribution' => $serviceDistribution,
+
+                'service_performance' => $servicePerformance,
+
+                'filters' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'service_id' => $validated['service_id'] ?? null,
+                ],
             ]
         );
     }
